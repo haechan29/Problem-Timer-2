@@ -8,6 +8,7 @@ import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,6 +20,8 @@ import androidx.compose.foundation.lazy.LazyListLayoutInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -31,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -65,7 +69,7 @@ fun TimerScreen() {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .wrapContentHeight(),
+                .height(40.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
@@ -74,7 +78,31 @@ fun TimerScreen() {
                     .wrapContentHeight(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                PageBox(40)
+                val pages = (1..100).map { it.toString() }.addedEmptyString(1)
+                val currentPage = pages.first()
+                IconButton(
+                    modifier = Modifier
+                        .wrapContentWidth()
+                        .fillMaxHeight(),
+                    onClick = { /*TODO*/ }
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.navigate_before_24px),
+                        contentDescription = null
+                    )
+                }
+                PageBox(pages)
+                IconButton(
+                    modifier = Modifier
+                        .wrapContentWidth()
+                        .fillMaxHeight(),
+                    onClick = { /*TODO*/ }
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.navigate_next_24px),
+                        contentDescription = null
+                    )
+                }
             }
             Spacer(modifier = Modifier.weight(1f))
             Row() {
@@ -85,15 +113,16 @@ fun TimerScreen() {
 }
 
 @Composable
-fun PageBox(itemSize: Int) {
+fun PageBox(pages: List<String>) {
     val listState = rememberLazyListState()
     val layoutInfo by remember { derivedStateOf { listState.layoutInfo } }
     val scope = rememberCoroutineScope()
     val firstItemIdx by remember { derivedStateOf { listState.firstVisibleItemIndex } }
+    val itemSize = 40
     LazyRow(
         modifier = Modifier
             .width(itemSize.dp * 2)
-            .wrapContentHeight()
+            .fillMaxHeight()
             .border(width = 1.dp, color = Color.Black),
         verticalAlignment = Alignment.CenterVertically,
         state = listState,
@@ -103,7 +132,6 @@ fun PageBox(itemSize: Int) {
             }
         }
     ) {
-        val pages = (1..100).map { it.toString() }.addedEmptyString(1)
         items(pages.size) { itemIdx ->
             if (itemIdx == pages.indices.first || itemIdx == pages.indices.last) {
                 Spacer(modifier = Modifier.width(itemSize.dp / 2))
@@ -113,12 +141,17 @@ fun PageBox(itemSize: Int) {
                 Text(
                     modifier = Modifier
                         .width(itemSize.dp)
-                        .height(40.dp)
+                        .fillMaxHeight()
                         .wrapContentHeight()
                         .alpha(
                             if (isItemVisible(layoutInfo, idxInVisibleItems)) {
                                 val itemInfo = layoutInfo.visibleItemsInfo[idxInVisibleItems]
-                                cos(getDistanceFromViewportCenter(layoutInfo, itemInfo).toFloat() / itemSize.toPx() * 1.5f)
+                                cos(
+                                    getDistanceFromViewportCenter(
+                                        layoutInfo,
+                                        itemInfo
+                                    ).toFloat() / itemSize.toPx() * 1.5f
+                                )
                             } else {
                                 0f
                             }

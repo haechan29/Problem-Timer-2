@@ -1,6 +1,5 @@
 package com.hc.problem_timer_2.util
 
-import android.util.Log
 import androidx.compose.animation.core.AnimationState
 import androidx.compose.animation.core.DecayAnimationSpec
 import androidx.compose.animation.core.animateDecay
@@ -9,22 +8,23 @@ import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.gestures.ScrollScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import kotlinx.coroutines.Job
 import kotlin.math.abs
 
 @Composable
-internal fun getFastScrollingFlingBehavior(onFinished: () -> Job): FlingBehavior {
+internal fun getFastScrollingFlingBehavior(onStart: () -> Unit, onFinish: () -> Unit): FlingBehavior {
     val flingSpec = rememberSplineBasedDecay<Float>()
     return remember(flingSpec) {
-        FastScrollingFlingBehavior(flingSpec, onFinished)
+        FastScrollingFlingBehavior(flingSpec, onStart, onFinish)
     }
 }
 
 private class FastScrollingFlingBehavior(
     private val flingDecay: DecayAnimationSpec<Float>,
-    private val onFinished: () -> Job
+    private val onStart: () -> Unit,
+    private val onFinish: () -> Unit
 ) : FlingBehavior {
     override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
+        onStart()
         var isAnimationRunning = true
         // Prevent very fast scroll
         val newVelocity =
@@ -44,7 +44,7 @@ private class FastScrollingFlingBehavior(
                 velocityLeft = this.velocity
                 if (isAnimationRunning != isRunning) {
                     if (!isRunning) {
-                        onFinished()
+                        onFinish()
                     }
                     isAnimationRunning = isRunning
                 }

@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -38,13 +37,19 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.hc.problem_timer_2.MainActivity.Companion.PAGE_ITEM_SIZE
 import com.hc.problem_timer_2.ui.theme.ProblemTimer2Theme
 import com.hc.problem_timer_2.util.addedEmptyString
 import com.hc.problem_timer_2.util.getFastScrollingFlingBehavior
 import com.hc.problem_timer_2.util.toPx
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.cos
+
+var canSetPage = true
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,6 +66,10 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    companion object {
+        const val PAGE_ITEM_SIZE = 40
+    }
 }
 
 @Composable
@@ -69,7 +78,7 @@ fun TimerScreen() {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(40.dp),
+                .height(PAGE_ITEM_SIZE.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
@@ -79,29 +88,22 @@ fun TimerScreen() {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val pages = (1..100).map { it.toString() }.addedEmptyString(1)
-                val currentPage = pages.first()
-                IconButton(
-                    modifier = Modifier
-                        .wrapContentWidth()
-                        .fillMaxHeight(),
-                    onClick = { /*TODO*/ }
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.navigate_before_24px),
-                        contentDescription = null
-                    )
+                var currentPageIdx = pages.indices.first
+                val scope = rememberCoroutineScope()
+                val listState = LazyListState()
+                val setCurrentPageIdx = { idx: Int -> currentPageIdx = idx }
+                PageButton(true) {
+                    canSetPageOnceIn(500) {
+                        scope.launch { listState.scrollTo(pageDiff = -1) }
+                        currentPageIdx -= 1
+                    }
                 }
-                PageBox(pages)
-                IconButton(
-                    modifier = Modifier
-                        .wrapContentWidth()
-                        .fillMaxHeight(),
-                    onClick = { /*TODO*/ }
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.navigate_next_24px),
-                        contentDescription = null
-                    )
+                PageBox(scope, pages, listState, setCurrentPageIdx)
+                PageButton(false) {
+                    canSetPageOnceIn(500) {
+                        scope.launch { listState.scrollTo(pageDiff = 1) }
+                        currentPageIdx += 1
+                    }
                 }
             }
             Spacer(modifier = Modifier.weight(1f))
@@ -112,50 +114,80 @@ fun TimerScreen() {
     }
 }
 
+fun canSetPageOnceIn(duration: Long, f: () -> Unit) {
+    if (canSetPage) {
+        canSetPage = false
+        CoroutineScope(Dispatchers.Default).launch {
+            delay(duration)
+            canSetPage = true
+        }
+        f()
+    }
+}
+
 @Composable
-fun PageBox(pages: List<String>) {
-    val listState = rememberLazyListState()
+fun PageButton(
+    isBeforeButton: Boolean,
+    onClick: () -> Unit
+) {
+    IconButton(
+        modifier = Modifier
+            .wrapContentWidth()
+            .fillMaxHeight(),
+        onClick = onClick
+    ) {
+        Icon(
+            painter = painterResource(
+                if (isBeforeButton) R.drawable.navigate_before_24px
+                else R.drawable.navigate_next_24px
+            ),
+            contentDescription = null
+        )
+    }
+}
+
+@Composable
+fun PageBox(
+    scope: CoroutineScope,
+    pages: List<String>,
+    listState: LazyListState,
+    setCurrentPageIdx: (Int) -> Unit
+) {
     val layoutInfo by remember { derivedStateOf { listState.layoutInfo } }
-    val scope = rememberCoroutineScope()
     val firstItemIdx by remember { derivedStateOf { listState.firstVisibleItemIndex } }
-    val itemSize = 40
     LazyRow(
         modifier = Modifier
-            .width(itemSize.dp * 2)
+            .width(PAGE_ITEM_SIZE.dp * 2)
             .fillMaxHeight()
             .border(width = 1.dp, color = Color.Black),
         verticalAlignment = Alignment.CenterVertically,
         state = listState,
-        flingBehavior = getFastScrollingFlingBehavior {
-            scope.launch {
-                scrollToCenter(listState, layoutInfo)
+        flingBehavior = getFastScrollingFlingBehavior(
+            onStart = { canSetPage = false },
+            onFinish = {
+                val closestItemToCenter = layoutInfo.getClosestItemToCenter()
+                scope.launch { listState.scrollToCenterOf(closestItemToCenter) }
+                setCurrentPageIdx(closestItemToCenter.index)
+                // prevent setting page while snapping
+                CoroutineScope(Dispatchers.Default).launch {
+                    while (listState.isScrollInProgress) delay(100)
+                    canSetPage = true
+                }
             }
-        }
+        )
     ) {
         items(pages.size) { itemIdx ->
             if (itemIdx == pages.indices.first || itemIdx == pages.indices.last) {
-                Spacer(modifier = Modifier.width(itemSize.dp / 2))
+                Spacer(modifier = Modifier.width(PAGE_ITEM_SIZE.dp / 2))
             }
             else {
                 val idxInVisibleItems = itemIdx - firstItemIdx
                 Text(
                     modifier = Modifier
-                        .width(itemSize.dp)
+                        .width(PAGE_ITEM_SIZE.dp)
                         .fillMaxHeight()
                         .wrapContentHeight()
-                        .alpha(
-                            if (isItemVisible(layoutInfo, idxInVisibleItems)) {
-                                val itemInfo = layoutInfo.visibleItemsInfo[idxInVisibleItems]
-                                cos(
-                                    getDistanceFromViewportCenter(
-                                        layoutInfo,
-                                        itemInfo
-                                    ).toFloat() / itemSize.toPx() * 1.5f
-                                )
-                            } else {
-                                0f
-                            }
-                        ),
+                        .alpha(layoutInfo.getPageTextAlpha(idxInVisibleItems)),
                     text = "${pages[itemIdx]}",
                     textAlign = TextAlign.Center
                 )
@@ -164,19 +196,26 @@ fun PageBox(pages: List<String>) {
     }
 }
 
-suspend fun scrollToCenter(listState: LazyListState, layoutInfo: LazyListLayoutInfo) = layoutInfo
-    .visibleItemsInfo
-    .map { getDistanceFromViewportCenter(layoutInfo, it) }
-    .minBy { abs(it) }
-    .let { listState.animateScrollBy(-it.toFloat()) }
+suspend fun LazyListState.scrollToCenterOf(item: LazyListItemInfo) {
+    val delta = layoutInfo.getDistanceFromViewportCenter(item)
+    animateScrollBy(-delta.toFloat())
+}
 
-fun getDistanceFromViewportCenter(layoutInfo: LazyListLayoutInfo, itemInfo: LazyListItemInfo) =
-    layoutInfo.viewportSize.width / 2 - getItemCenterOffset(itemInfo)
+fun LazyListLayoutInfo.getClosestItemToCenter() = visibleItemsInfo.minBy { abs(getDistanceFromViewportCenter(it)) }
+suspend fun LazyListState.scrollTo(pageDiff: Int) = animateScrollBy(PAGE_ITEM_SIZE.toPx() * pageDiff.toFloat())
 
+fun LazyListLayoutInfo.getPageTextAlpha(idxInVisibleItems: Int) =
+    if (isItemVisible(idxInVisibleItems)) {
+        val itemInfo = visibleItemsInfo[idxInVisibleItems]
+        val dist = getDistanceFromViewportCenter(itemInfo)
+        cos(dist / PAGE_ITEM_SIZE.toPx() * 1.5f)
+    } else {
+        0f
+    }
+
+fun LazyListLayoutInfo.getDistanceFromViewportCenter(itemInfo: LazyListItemInfo) = viewportSize.width / 2 - getItemCenterOffset(itemInfo)
 fun getItemCenterOffset(itemInfo: LazyListItemInfo) = with(itemInfo) { offset + size / 2 }
-
-fun isItemVisible(layoutInfo: LazyListLayoutInfo, idxInVisibleItems: Int) =
-    idxInVisibleItems in layoutInfo.visibleItemsInfo.indices
+fun LazyListLayoutInfo.isItemVisible(idxInVisibleItems: Int) = idxInVisibleItems in visibleItemsInfo.indices
 
 @Preview(showBackground = true)
 @Composable

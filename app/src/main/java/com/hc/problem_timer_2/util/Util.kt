@@ -62,3 +62,7 @@ object FlagController {
 enum class Flag(val key: String) {
     SET_PAGE("PAGE")
 }
+
+sealed class ScrollPosition
+data object Start : ScrollPosition()
+data object Center : ScrollPosition()

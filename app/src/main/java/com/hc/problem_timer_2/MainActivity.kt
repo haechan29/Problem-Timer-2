@@ -39,17 +39,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.hc.problem_timer_2.MainActivity.Companion.PAGE_ITEM_SIZE
 import com.hc.problem_timer_2.ui.theme.ProblemTimer2Theme
+import com.hc.problem_timer_2.util.FlagController.invokeAndBlock
+import com.hc.problem_timer_2.util.Flag.*
+import com.hc.problem_timer_2.util.FlagController.block
 import com.hc.problem_timer_2.util.addedEmptyString
 import com.hc.problem_timer_2.util.getFastScrollingFlingBehavior
 import com.hc.problem_timer_2.util.toPx
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.cos
-
-var canSetPage = true
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -93,14 +92,14 @@ fun TimerScreen() {
                 val listState = LazyListState()
                 val setCurrentPageIdx = { idx: Int -> currentPageIdx = idx }
                 PageButton(true) {
-                    canSetPageOnceIn(500) {
+                    invokeAndBlock(SET_PAGE, 500) {
                         scope.launch { listState.scrollTo(pageDiff = -1) }
                         currentPageIdx -= 1
                     }
                 }
                 PageBox(scope, pages, listState, setCurrentPageIdx)
                 PageButton(false) {
-                    canSetPageOnceIn(500) {
+                    invokeAndBlock(SET_PAGE, 500) {
                         scope.launch { listState.scrollTo(pageDiff = 1) }
                         currentPageIdx += 1
                     }
@@ -111,17 +110,6 @@ fun TimerScreen() {
 
             }
         }
-    }
-}
-
-fun canSetPageOnceIn(duration: Long, f: () -> Unit) {
-    if (canSetPage) {
-        canSetPage = false
-        CoroutineScope(Dispatchers.Default).launch {
-            delay(duration)
-            canSetPage = true
-        }
-        f()
     }
 }
 
@@ -163,16 +151,11 @@ fun PageBox(
         verticalAlignment = Alignment.CenterVertically,
         state = listState,
         flingBehavior = getFastScrollingFlingBehavior(
-            onStart = { canSetPage = false },
+            onStart = { block(SET_PAGE) { !listState.isScrollInProgress } },
             onFinish = {
                 val closestItemToCenter = layoutInfo.getClosestItemToCenter()
                 scope.launch { listState.scrollToCenterOf(closestItemToCenter) }
                 setCurrentPageIdx(closestItemToCenter.index)
-                // prevent setting page while snapping
-                CoroutineScope(Dispatchers.Default).launch {
-                    while (listState.isScrollInProgress) delay(100)
-                    canSetPage = true
-                }
             }
         )
     ) {

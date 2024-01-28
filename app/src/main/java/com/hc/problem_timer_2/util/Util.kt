@@ -2,6 +2,10 @@ package com.hc.problem_timer_2.util
 
 import android.content.res.Resources
 import android.util.Log
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusManager
+import androidx.compose.ui.input.pointer.pointerInput
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -63,6 +67,8 @@ enum class Flag(val key: String) {
     SET_PAGE("PAGE")
 }
 
-sealed class ScrollPosition
-data object Start : ScrollPosition()
-data object Center : ScrollPosition()
+fun Modifier.addFocusCleaner(focusManager: FocusManager) = this.pointerInput(Unit) {
+    detectTapGestures(onTap = {
+        focusManager.clearFocus()
+    })
+}

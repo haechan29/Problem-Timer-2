@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -15,11 +16,13 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -29,6 +32,7 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -47,13 +51,17 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hc.problem_timer_2.MainActivity.Companion.PAGE_ITEM_SIZE
+import com.hc.problem_timer_2.ui.theme.Primary
 import com.hc.problem_timer_2.ui.theme.ProblemTimer2Theme
 import com.hc.problem_timer_2.util.FlagController.invokeAndBlock
 import com.hc.problem_timer_2.util.Flag.*
+import com.hc.problem_timer_2.util.TimberDebugTree
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 
 class MainActivity : ComponentActivity() {
@@ -72,6 +80,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        Timber.plant(TimberDebugTree)
     }
 
     companion object {
@@ -82,7 +91,11 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun TimerScreen(pageViewModel: PageViewModel) {
     var isGradeMode by remember { mutableStateOf(false) }
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(start = 5.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -91,9 +104,7 @@ fun TimerScreen(pageViewModel: PageViewModel) {
         ) {
             PageTab(pageViewModel)
             Spacer(modifier = Modifier.weight(1f))
-            Row() {
-                Switch(checked = isGradeMode, onCheckedChange = {})
-            }
+            GradeTab(isGradeMode) { value: Boolean -> isGradeMode = value }
         }
     }
 }
@@ -107,7 +118,7 @@ fun PageTab(
     Row(
         modifier = Modifier
             .wrapContentWidth()
-            .wrapContentHeight(),
+            .fillMaxHeight(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         val pages = (1..100).toList()
@@ -115,13 +126,13 @@ fun PageTab(
         observePage(pageViewModel = pageViewModel, listState = listState, pages = pages)
 
         PageButton(true) {
-            setPage("${pageViewModel.page.value!! - 1}", pageViewModel, pages) {
+            setPage((pageViewModel.page.value!! - 1).toString(), pageViewModel, pages) {
                 notifyPageOutOfRange(context, pages)
             }
         }
-        PageBox(pageViewModel, pages, listState)
+        PageBox(pages = pages, listState = listState)
         PageButton(false) {
-            setPage("${pageViewModel.page.value!! + 1}", pageViewModel, pages) {
+            setPage((pageViewModel.page.value!! + 1).toString(), pageViewModel, pages) {
                 notifyPageOutOfRange(context, pages)
             }
         }
@@ -164,7 +175,7 @@ fun PageButton(
 
 @Composable
 fun PageBox(
-    pageViewModel: PageViewModel,
+    pageViewModel: PageViewModel = viewModel(),
     pages: List<Int>,
     listState: LazyListState
 ) {
@@ -177,7 +188,7 @@ fun PageBox(
         modifier = Modifier
             .width(PAGE_ITEM_SIZE.dp * 1.5f)
             .fillMaxHeight()
-            .border(width = 1.dp, color = Color.Black),
+            .border(width = 1.dp, color = Color.Black, shape = RoundedCornerShape(5.dp)),
         verticalAlignment = Alignment.CenterVertically,
         state = listState,
         contentPadding = PaddingValues(horizontal = 10.dp),
@@ -213,6 +224,34 @@ fun PageBox(
                 }
             )
         }
+    }
+}
+
+@Composable
+fun GradeTab(isGradeMode: Boolean, setGradeMode: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .wrapContentWidth()
+            .fillMaxHeight(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            modifier = Modifier.padding(end = 10.dp),
+            text = "채점\n하기",
+            lineHeight = 14.sp,
+            fontSize = 12.sp
+        )
+        Switch(
+            modifier = Modifier
+                .wrapContentWidth()
+                .fillMaxHeight(),
+            checked = isGradeMode,
+            onCheckedChange = { setGradeMode(it) },
+            colors = SwitchDefaults.colors(
+                checkedTrackColor = Primary,
+                uncheckedBorderColor = Color.Transparent
+            )
+        )
     }
 }
 

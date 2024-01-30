@@ -28,6 +28,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -46,10 +47,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hc.problem_timer_2.MainActivity.Companion.PAGE_ITEM_SIZE
 import com.hc.problem_timer_2.ui.theme.ProblemTimer2Theme
 import com.hc.problem_timer_2.util.FlagController.invokeAndBlock
 import com.hc.problem_timer_2.util.Flag.*
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 
@@ -78,6 +81,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun TimerScreen(pageViewModel: PageViewModel) {
+    var isGradeMode by remember { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
@@ -88,15 +92,18 @@ fun TimerScreen(pageViewModel: PageViewModel) {
             PageTab(pageViewModel)
             Spacer(modifier = Modifier.weight(1f))
             Row() {
-
+                Switch(checked = isGradeMode, onCheckedChange = {})
             }
         }
     }
 }
 
 @Composable
-fun PageTab(pageViewModel: PageViewModel) {
-    val context = LocalContext.current
+fun PageTab(
+    pageViewModel: PageViewModel = viewModel(),
+    context: Context = LocalContext.current,
+    listState: LazyListState = LazyListState()
+) {
     Row(
         modifier = Modifier
             .wrapContentWidth()
@@ -105,12 +112,7 @@ fun PageTab(pageViewModel: PageViewModel) {
     ) {
         val pages = (1..100).toList()
         pageViewModel.setPage(pages.first())
-        val scope = rememberCoroutineScope()
-        val listState = LazyListState()
-        pageViewModel.page.observe(LocalLifecycleOwner.current) { page ->
-            page ?: return@observe
-            scope.launch { listState.animateScrollToItem(pages.indexOf(page)) }
-        }
+        observePage(pageViewModel = pageViewModel, listState = listState, pages = pages)
 
         PageButton(true) {
             setPage("${pageViewModel.page.value!! - 1}", pageViewModel, pages) {
@@ -123,6 +125,19 @@ fun PageTab(pageViewModel: PageViewModel) {
                 notifyPageOutOfRange(context, pages)
             }
         }
+    }
+}
+
+@Composable
+fun observePage(
+    pageViewModel: PageViewModel,
+    listState: LazyListState,
+    pages: List<Int>,
+    scope: CoroutineScope = rememberCoroutineScope()
+) {
+    pageViewModel.page.observe(LocalLifecycleOwner.current) { page ->
+        page ?: return@observe
+        scope.launch { listState.animateScrollToItem(pages.indexOf(page)) }
     }
 }
 

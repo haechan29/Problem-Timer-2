@@ -67,8 +67,7 @@ enum class Flag(val key: String) {
     SET_PAGE("PAGE")
 }
 
-fun Modifier.addFocusCleaner(focusManager: FocusManager) = this.pointerInput(Unit) {
-    detectTapGestures(onTap = {
-        focusManager.clearFocus()
-    })
-}
+
+fun <T> List<T>.added(t: T) = this.copy().toMutableList().apply { add(t) }
+fun <T> List<T>.removed(t: T) = this.copy().toMutableList().apply { remove(t) }
+fun <T> List<T>.copy() = mutableListOf<T>().apply { addAll(this@copy) }

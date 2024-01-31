@@ -44,6 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -67,6 +68,8 @@ import com.hc.problem_timer_2.ui.theme.ProblemTimer2Theme
 import com.hc.problem_timer_2.util.FlagController.invokeAndBlock
 import com.hc.problem_timer_2.util.Flag.*
 import com.hc.problem_timer_2.util.TimberDebugTree
+import com.hc.problem_timer_2.viewmodel.BookListViewModel
+import com.hc.problem_timer_2.viewmodel.PageViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -95,27 +98,31 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun TimerScreen() {
+fun TimerScreen(
+    bookListViewModel: BookListViewModel = viewModel()
+) {
     var isGradeMode by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
         var isShowingAddBookDialog by remember { mutableStateOf(false) }
-        val onDismiss = { isShowingAddBookDialog = false }
-        val onConfirm = { isShowingAddBookDialog = false }
         BookTab { isShowingAddBookDialog = true }
         Divider(thickness = 1.dp, color = Color.LightGray)
         PageAndGradeTab(isGradeMode) { value: Boolean -> isGradeMode = value }
         Divider(thickness = 1.dp, color = Color.LightGray)
         if (isShowingAddBookDialog) {
-            AddBookDialog(onConfirm, onDismiss)
+            AddBookDialog { isShowingAddBookDialog = false }
         }
     }
 }
 
 @Composable
-fun BookTab(showAddBookDialog: () -> Unit) {
-    val books = listOf("책1", "책2")
+fun BookTab(
+    bookListViewModel: BookListViewModel = viewModel(),
+    showAddBookDialog: () -> Unit
+) {
+    bookListViewModel.getBookListFromLocalDB()
+    val books by bookListViewModel.bookList.observeAsState()
     var selectedItemIndex by remember { mutableStateOf<Int?>(null) }
     LazyRow(
         modifier = Modifier
@@ -124,8 +131,8 @@ fun BookTab(showAddBookDialog: () -> Unit) {
             .height(40.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        items(books.size + 1) { itemIndex ->
-            if (itemIndex in books.indices) {
+        items(books!!.size + 1) { itemIndex ->
+            if (itemIndex in books!!.indices) {
                 Button(
                     modifier = Modifier
                         .wrapContentWidth()
@@ -140,7 +147,7 @@ fun BookTab(showAddBookDialog: () -> Unit) {
                         selectedItemIndex = itemIndex
                     }
                 ) {
-                    Text(text = books[itemIndex])
+                    Text(text = books!![itemIndex])
                 }
             } else {
                 Button(
@@ -316,46 +323,25 @@ fun GradeTab(isGradeMode: Boolean, setGradeMode: (Boolean) -> Unit) {
 }
 
 @Composable
-fun AddBookDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    val books = listOf("책1", "책2", "책3")
-    val scrollState = rememberScrollState()
+fun AddBookDialog(
+    bookListViewModel: BookListViewModel = viewModel(),
+    hideDialog: () -> Unit
+) {
+    val books = listOf("책1", "책2")
     var selectedItemIndex by remember { mutableStateOf<Int?>(null) }
     AlertDialog(
-        title = {
-            Text(
-                text = "선택된 교재를 추가합니다",
-                fontSize = 16.sp
-            )
-        },
-        text = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(40.dp)
-                    .horizontalScroll(scrollState),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                books.mapIndexed { itemIndex, book ->
-                    Button(
-                        modifier = Modifier
-                            .wrapContentWidth()
-                            .fillMaxHeight()
-                            .background(color = Color.Transparent, shape = CircleShape),
-                        onClick = { selectedItemIndex = itemIndex },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (itemIndex == selectedItemIndex) Color.Black else Color.LightGray,
-                            contentColor = if (itemIndex == selectedItemIndex) Color.White else Color.Black
-                        ),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 5.dp)
-                    ) {
-                        Text(text = book)
-                    }
-                }
-            }
-        },
-        onDismissRequest = onDismiss,
+        title = { Text(text = "선택된 교재를 추가합니다", fontSize = 16.sp) },
+        text = { BooksToAddTab(books, { selectedItemIndex }) { value: Int -> selectedItemIndex = value } },
+        containerColor = Color.White,
+        onDismissRequest = hideDialog,
         confirmButton = {
-            TextButton(onClick = onConfirm) {
+            TextButton(
+                onClick = {
+                    val book = selectedItemIndex?.let { books[it] }
+                    book?.let { bookListViewModel.addBook(it) }
+                    hideDialog()
+                }
+            ) {
                 Text(
                     text = "교재 추가",
                     fontSize = 14.sp,
@@ -364,7 +350,7 @@ fun AddBookDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = hideDialog) {
                 Text(
                     text = "취소",
                     fontSize = 14.sp,
@@ -373,6 +359,35 @@ fun AddBookDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
             }
         }
     )
+}
+
+@Composable
+fun BooksToAddTab(books: List<String>, getSelectedItemIndex: () -> Int?, setSelectedItemIndex: (Int) -> Unit) {
+    val scrollState = rememberScrollState()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(40.dp)
+            .horizontalScroll(scrollState),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        books.mapIndexed { itemIndex, book ->
+            Button(
+                modifier = Modifier
+                    .wrapContentWidth()
+                    .fillMaxHeight()
+                    .background(color = Color.Transparent, shape = CircleShape),
+                onClick = { setSelectedItemIndex(itemIndex) },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (itemIndex == getSelectedItemIndex()) Color.Black else Color.LightGray,
+                    contentColor = if (itemIndex == getSelectedItemIndex()) Color.White else Color.Black
+                ),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 5.dp)
+            ) {
+                Text(text = book)
+            }
+        }
+    }
 }
 
 fun setPage(pageString: String, pageViewModel: PageViewModel, pages: List<Int>, alert: () -> Unit) =

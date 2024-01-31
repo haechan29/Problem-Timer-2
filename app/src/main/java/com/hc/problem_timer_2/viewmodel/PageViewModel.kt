@@ -1,4 +1,4 @@
-package com.hc.problem_timer_2
+package com.hc.problem_timer_2.viewmodel
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData

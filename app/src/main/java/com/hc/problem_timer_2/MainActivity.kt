@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -22,11 +23,13 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
@@ -38,6 +41,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -96,15 +100,21 @@ fun TimerScreen() {
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        BookTab()
+        var isShowingAddBookDialog by remember { mutableStateOf(false) }
+        val onDismiss = { isShowingAddBookDialog = false }
+        val onConfirm = { isShowingAddBookDialog = false }
+        BookTab { isShowingAddBookDialog = true }
         Divider(thickness = 1.dp, color = Color.LightGray)
         PageAndGradeTab(isGradeMode) { value: Boolean -> isGradeMode = value }
         Divider(thickness = 1.dp, color = Color.LightGray)
+        if (isShowingAddBookDialog) {
+            AddBookDialog(onConfirm, onDismiss)
+        }
     }
 }
 
 @Composable
-fun BookTab() {
+fun BookTab(showAddBookDialog: () -> Unit) {
     val books = listOf("책1", "책2")
     var selectedItemIndex by remember { mutableStateOf<Int?>(null) }
     LazyRow(
@@ -134,7 +144,7 @@ fun BookTab() {
                 }
             } else {
                 Button(
-                    onClick = { /*TODO*/ },
+                    onClick = { showAddBookDialog() },
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 5.dp)
                 ) {
                     Text("교재 추가하기")
@@ -303,6 +313,66 @@ fun GradeTab(isGradeMode: Boolean, setGradeMode: (Boolean) -> Unit) {
             )
         )
     }
+}
+
+@Composable
+fun AddBookDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    val books = listOf("책1", "책2", "책3")
+    val scrollState = rememberScrollState()
+    var selectedItemIndex by remember { mutableStateOf<Int?>(null) }
+    AlertDialog(
+        title = {
+            Text(
+                text = "선택된 교재를 추가합니다",
+                fontSize = 16.sp
+            )
+        },
+        text = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(40.dp)
+                    .horizontalScroll(scrollState),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                books.mapIndexed { itemIndex, book ->
+                    Button(
+                        modifier = Modifier
+                            .wrapContentWidth()
+                            .fillMaxHeight()
+                            .background(color = Color.Transparent, shape = CircleShape),
+                        onClick = { selectedItemIndex = itemIndex },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (itemIndex == selectedItemIndex) Color.Black else Color.LightGray,
+                            contentColor = if (itemIndex == selectedItemIndex) Color.White else Color.Black
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 5.dp)
+                    ) {
+                        Text(text = book)
+                    }
+                }
+            }
+        },
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(
+                    text = "교재 추가",
+                    fontSize = 14.sp,
+                    color = Primary
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(
+                    text = "취소",
+                    fontSize = 14.sp,
+                    color = Color.Gray
+                )
+            }
+        }
+    )
 }
 
 fun setPage(pageString: String, pageViewModel: PageViewModel, pages: List<Int>, alert: () -> Unit) =

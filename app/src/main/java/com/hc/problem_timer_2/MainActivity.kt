@@ -43,6 +43,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -179,6 +180,7 @@ fun PageAndGradeTab(isGradeMode: Boolean, setGradeMode: (Boolean) -> Unit) {
 @Composable
 fun PageTab(
     pageViewModel: PageViewModel = viewModel(),
+    scope: CoroutineScope = rememberCoroutineScope(),
     context: Context = LocalContext.current,
     listState: LazyListState = LazyListState()
 ) {
@@ -188,34 +190,30 @@ fun PageTab(
             .fillMaxHeight(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val pages = (1..100).toList()
-        pageViewModel.setPage(pages.first())
-        observePage(pageViewModel = pageViewModel, listState = listState, pages = pages)
+        val pages = (1 .. 100).toList()
+        val page by pageViewModel.page.observeAsState()
+        page ?: run { pageViewModel.setPage(pages.first()) }
+        LaunchedEffect(key1 = page) {
+            val index = pages.indexOf(page)
+            if (index == -1) return@LaunchedEffect
+            scope.launch { listState.animateScrollToItem(index) }
+        }
 
         PageButton(true) {
-            setPage((pageViewModel.page.value!! - 1).toString(), pageViewModel, pages) {
+            val index = pages.indexOf(page)
+            if (index < 0) return@PageButton
+            setPage((page!! - 1).toString(), pageViewModel, pages) {
                 notifyPageOutOfRange(context, pages)
             }
         }
         PageBox(pages = pages, listState = listState)
         PageButton(false) {
-            setPage((pageViewModel.page.value!! + 1).toString(), pageViewModel, pages) {
+            val index = pages.indexOf(page)
+            if (index < 0) return@PageButton
+            setPage((page!! + 1).toString(), pageViewModel, pages) {
                 notifyPageOutOfRange(context, pages)
             }
         }
-    }
-}
-
-@Composable
-fun observePage(
-    pageViewModel: PageViewModel,
-    listState: LazyListState,
-    pages: List<Int>,
-    scope: CoroutineScope = rememberCoroutineScope()
-) {
-    pageViewModel.page.observe(LocalLifecycleOwner.current) { page ->
-        page ?: return@observe
-        scope.launch { listState.animateScrollToItem(pages.indexOf(page)) }
     }
 }
 

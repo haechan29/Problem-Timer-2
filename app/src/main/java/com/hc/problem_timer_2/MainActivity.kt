@@ -5,9 +5,9 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -22,10 +22,14 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
@@ -65,8 +69,6 @@ import timber.log.Timber
 
 
 class MainActivity : ComponentActivity() {
-    val pageViewModel by viewModels<PageViewModel>()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -76,7 +78,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    TimerScreen(pageViewModel)
+                    TimerScreen()
                 }
             }
         }
@@ -89,23 +91,71 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun TimerScreen(pageViewModel: PageViewModel) {
+fun TimerScreen() {
     var isGradeMode by remember { mutableStateOf(false) }
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(start = 5.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
+        modifier = Modifier.fillMaxSize()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(40.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            PageTab(pageViewModel)
-            Spacer(modifier = Modifier.weight(1f))
-            GradeTab(isGradeMode) { value: Boolean -> isGradeMode = value }
+        BookTab()
+        Divider(thickness = 1.dp, color = Color.LightGray)
+        PageAndGradeTab(isGradeMode) { value: Boolean -> isGradeMode = value }
+        Divider(thickness = 1.dp, color = Color.LightGray)
+    }
+}
+
+@Composable
+fun BookTab() {
+    val books = listOf("책1", "책2")
+    var selectedItemIndex by remember { mutableStateOf<Int?>(null) }
+    LazyRow(
+        modifier = Modifier
+            .padding(all = 10.dp)
+            .fillMaxWidth()
+            .height(40.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        items(books.size + 1) { itemIndex ->
+            if (itemIndex in books.indices) {
+                Button(
+                    modifier = Modifier
+                        .wrapContentWidth()
+                        .fillMaxHeight()
+                        .background(color = Color.Transparent, shape = CircleShape),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (itemIndex == selectedItemIndex) Color.Black else Color.LightGray,
+                        contentColor = if (itemIndex == selectedItemIndex) Color.White else Color.Black
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 5.dp),
+                    onClick = {
+                        selectedItemIndex = itemIndex
+                    }
+                ) {
+                    Text(text = books[itemIndex])
+                }
+            } else {
+                Button(
+                    onClick = { /*TODO*/ },
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 5.dp)
+                ) {
+                    Text("교재 추가하기")
+                }
+            }
         }
+    }
+}
+
+@Composable
+fun PageAndGradeTab(isGradeMode: Boolean, setGradeMode: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .padding(start = 5.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
+            .fillMaxWidth()
+            .height(40.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        PageTab()
+        Spacer(modifier = Modifier.weight(1f))
+        GradeTab(isGradeMode, setGradeMode)
     }
 }
 
@@ -268,4 +318,4 @@ fun setPage(pageString: String, pageViewModel: PageViewModel, pages: List<Int>, 
     }
 
 fun notifyPageOutOfRange(context: Context, pages: List<Int>)
-    = Toast.makeText(context, "${pages.first()}과 ${pages.last()} 사이의 값을 입력해주세요", Toast.LENGTH_SHORT).show()
+        = Toast.makeText(context, "${pages.first()}과 ${pages.last()} 사이의 값을 입력해주세요", Toast.LENGTH_SHORT).show()

@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -59,7 +60,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableIntStateOf
@@ -75,6 +75,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -101,6 +102,8 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import androidx.compose.ui.text.font.lerp
+import androidx.compose.ui.graphics.lerp
 
 
 class MainActivity : ComponentActivity() {
@@ -132,12 +135,12 @@ fun TimerScreen() {
         var isShowingAddBookDialog by remember { mutableStateOf(false) }
         BookTab { isShowingAddBookDialog = true }
         Divider(thickness = 1.dp, color = Color.LightGray)
-        PageAndGradeTab(isGradeMode) { value: Boolean -> isGradeMode = value }
+        PageAndGradeTab({ isGradeMode }, { value: Boolean -> isGradeMode = value })
         Divider(thickness = 1.dp, color = Color.LightGray)
         if (isShowingAddBookDialog) {
             AddBookDialog { isShowingAddBookDialog = false }
         }
-        ProblemListTab()
+        ProblemListTab { isGradeMode }
     }
 }
 
@@ -194,7 +197,7 @@ fun BookTab(
 }
 
 @Composable
-fun PageAndGradeTab(isGradeMode: Boolean, setGradeMode: (Boolean) -> Unit) {
+fun PageAndGradeTab(isGradeMode: () -> Boolean, setGradeMode: (Boolean) -> Unit) {
     Row(
         modifier = Modifier
             .padding(start = 5.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
@@ -324,7 +327,13 @@ fun PageBox(
 }
 
 @Composable
-fun GradeTab(isGradeMode: Boolean, setGradeMode: (Boolean) -> Unit) {
+fun GradeTab(isGradeMode: () -> Boolean, setGradeMode: (Boolean) -> Unit) {
+    val progress by animateFloatAsState(targetValue = if (isGradeMode()) 1f else 0f, label = "")
+    val focusedWeight = lerp(FontWeight.ExtraBold, FontWeight.Normal, progress)
+    val unfocusedWeight = lerp(FontWeight.ExtraBold, FontWeight.Normal, 1 - progress)
+    LaunchedEffect(key1 = isGradeMode()) {
+
+    }
     Row(
         modifier = Modifier
             .wrapContentWidth()
@@ -332,21 +341,29 @@ fun GradeTab(isGradeMode: Boolean, setGradeMode: (Boolean) -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            modifier = Modifier.padding(end = 10.dp),
-            text = "채점\n하기",
+            text = "문제\n보기",
             lineHeight = 14.sp,
-            fontSize = 12.sp
+            fontSize = 12.sp,
+            fontWeight = focusedWeight
         )
+        Spacer(modifier = Modifier.width(10.dp))
         Switch(
             modifier = Modifier
                 .wrapContentWidth()
                 .fillMaxHeight(),
-            checked = isGradeMode,
+            checked = isGradeMode(),
             onCheckedChange = { setGradeMode(it) },
             colors = SwitchDefaults.colors(
                 checkedTrackColor = Primary,
                 uncheckedBorderColor = Color.Transparent
             )
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text = "채점\n하기",
+            lineHeight = 14.sp,
+            fontSize = 12.sp,
+            fontWeight = unfocusedWeight
         )
     }
 }
@@ -422,7 +439,8 @@ fun BooksToAddTab(books: List<String>, getSelectedItemIndex: () -> Int?, setSele
 @Composable
 fun ProblemListTab(
     problemListViewModel: ProblemListViewModel = viewModel(),
-    problemRecordListViewModel: ProblemRecordListViewModel = viewModel()
+    problemRecordListViewModel: ProblemRecordListViewModel = viewModel(),
+    isGradeMode: () -> Boolean
 ) {
     problemListViewModel.getProblemsFromLocalDB()
     problemRecordListViewModel.getProblemRecordsFromLocalDB()
@@ -450,9 +468,16 @@ fun ProblemListTab(
                         .padding(10.dp)
                 ) {
                     var isShowingProblemRecords by remember { mutableStateOf(false) }
-                    ProblemTab(problem,problemRecords?.first()) {
-                        isShowingProblemRecords = !isShowingProblemRecords
+                    LaunchedEffect(key1 = isGradeMode()) {
+                        isShowingProblemRecords = false
                     }
+                    ProblemTab(
+                        problem,
+                        problemRecords?.first(),
+                        isGradeMode,
+                        { isShowingProblemRecords },
+                        { isShowingProblemRecords = !isShowingProblemRecords }
+                    )
                     AnimatedVisibility(
                         visible = isShowingProblemRecords,
                         enter = expandVertically(expandFrom = Alignment.Top),
@@ -473,11 +498,12 @@ fun ProblemListTab(
 fun ProblemTab(
     problem: Problem,
     recentProblemRecord: ProblemRecord?,
+    isGradeMode: () -> Boolean,
+    getVisibility: () -> Boolean,
     toggleVisibility: () -> Unit
 ) {
-    var isFolded by remember { mutableStateOf(true) }
     val viewMoreIconRotationZ by animateFloatAsState(
-        targetValue = if (isFolded) 0f else 180f,
+        targetValue = if (!getVisibility()) 0f else 180f,
         animationSpec = tween(200),
         label = "rotationZ for view more icon"
     )
@@ -492,6 +518,9 @@ fun ProblemTab(
             delay(100)
             measuredTime += 100
         }
+    }
+    LaunchedEffect(key1 = isGradeMode()) {
+        isTimerRunning = false
     }
     Row(
         modifier = Modifier
@@ -524,12 +553,7 @@ fun ProblemTab(
                 textAlign = TextAlign.Center
             )
         }
-        IconButton(
-            onClick = {
-                toggleVisibility()
-                isFolded = !isFolded
-            }
-        ) {
+        IconButton(onClick = toggleVisibility) {
             Icon(
                 imageVector = Icons.Default.ArrowDropDown,
                 contentDescription = "show problem records",

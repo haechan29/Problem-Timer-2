@@ -18,23 +18,31 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -56,7 +64,6 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -66,14 +73,20 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hc.problem_timer_2.MainActivity.Companion.PAGE_ITEM_SIZE
 import com.hc.problem_timer_2.ui.theme.Primary
 import com.hc.problem_timer_2.ui.theme.ProblemTimer2Theme
+import com.hc.problem_timer_2.util.AMBIGUOUS
+import com.hc.problem_timer_2.util.CORRECT
 import com.hc.problem_timer_2.util.FlagController.invokeAndBlock
 import com.hc.problem_timer_2.util.Flag.*
 import com.hc.problem_timer_2.util.TimberDebugTree
+import com.hc.problem_timer_2.util.WRONG
+import com.hc.problem_timer_2.util.added
 import com.hc.problem_timer_2.viewmodel.BookListViewModel
 import com.hc.problem_timer_2.viewmodel.PageViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 
 class MainActivity : ComponentActivity() {
@@ -103,9 +116,7 @@ fun TimerScreen(
     bookListViewModel: BookListViewModel = viewModel()
 ) {
     var isGradeMode by remember { mutableStateOf(false) }
-    Column(
-        modifier = Modifier.fillMaxSize()
-    ) {
+    Column(modifier = Modifier.fillMaxSize()) {
         var isShowingAddBookDialog by remember { mutableStateOf(false) }
         BookTab { isShowingAddBookDialog = true }
         Divider(thickness = 1.dp, color = Color.LightGray)
@@ -114,6 +125,7 @@ fun TimerScreen(
         if (isShowingAddBookDialog) {
             AddBookDialog { isShowingAddBookDialog = false }
         }
+        ProblemListTab()
     }
 }
 
@@ -129,8 +141,9 @@ fun BookTab(
         modifier = Modifier
             .padding(all = 10.dp)
             .fillMaxWidth()
-            .height(40.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+            .height(50.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         items(books!!.size + 1) { itemIndex ->
             if (itemIndex in books!!.indices) {
@@ -143,19 +156,25 @@ fun BookTab(
                         containerColor = if (itemIndex == selectedItemIndex) Color.Black else Color.LightGray,
                         contentColor = if (itemIndex == selectedItemIndex) Color.White else Color.Black
                     ),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 5.dp),
-                    onClick = {
-                        selectedItemIndex = itemIndex
-                    }
+                    onClick = { selectedItemIndex = itemIndex }
                 ) {
                     Text(text = books!![itemIndex])
                 }
             } else {
-                Button(
+                IconButton(
+                    modifier = Modifier
+                        .size(50.dp)
+                        .padding(all = 5.dp)
+                        .background(color = Primary, shape = CircleShape),
                     onClick = { showAddBookDialog() },
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 5.dp)
+                    colors = IconButtonDefaults.iconButtonColors(
+                        contentColor = Color.White
+                    )
                 ) {
-                    Text("교재 추가하기")
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "add book",
+                    )
                 }
             }
         }
@@ -388,6 +407,145 @@ fun BooksToAddTab(books: List<String>, getSelectedItemIndex: () -> Int?, setSele
     }
 }
 
+@Composable
+fun ProblemListTab() {
+    val problems = listOf(Problem("1"), Problem("2"), Problem("3"))
+    val problemRecordListMap = listOf(
+        ProblemRecord("1", 50_000, WRONG, LocalDate.now().plusDays(-1)),
+        ProblemRecord("1", 45_000, CORRECT, LocalDate.now())
+    ).fold(mutableMapOf<String, MutableList<ProblemRecord>>()) { map, problemRecord ->
+        val problemRecordsWithTheNumber = map[problemRecord.number] ?: mutableListOf()
+        map[problemRecord.number] =
+            problemRecordsWithTheNumber
+                .added(problemRecord)
+                .sortedByDescending { it.solvedAt }
+                .take(3)
+                .toMutableList()
+        map
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(all = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        items(problems) { problem ->
+            val problemRecords = problemRecordListMap[problem.number]
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight()
+                    .padding(10.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                ) {
+                    var isShowingProblemRecords by remember { mutableStateOf(false) }
+                    ProblemTab(problem, problemRecords?.first()) { isShowingProblemRecords = !isShowingProblemRecords }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    if (isShowingProblemRecords) {
+                        if (problemRecords != null) {
+                            ProblemRecordListTab(problemRecords)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ProblemTab(
+    problem: Problem,
+    recentProblemRecord: ProblemRecord?,
+    toggleVisibility: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .height(100.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val timeRecord =
+            if (recentProblemRecord != null && recentProblemRecord.solvedAt.isBefore(LocalDate.now()))
+                recentProblemRecord.timeRecord
+            else 0
+
+        Text(
+            modifier = Modifier
+                .width(50.dp)
+                .wrapContentHeight(),
+            text = problem.number,
+            fontSize = 14.sp,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            modifier = Modifier
+                .weight(1f)
+                .wrapContentHeight(),
+            text = toTimeFormat(timeRecord),
+            fontSize = 14.sp,
+            textAlign = TextAlign.Center
+        )
+        IconButton(onClick = toggleVisibility) {
+            Icon(
+                imageVector = Icons.Default.ArrowDropDown,
+                contentDescription = "show problem records"
+            )
+        }
+    }
+}
+
+@Composable
+fun ProblemRecordListTab(problemRecords: MutableList<ProblemRecord>) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight()
+    ) {
+        problemRecords.mapIndexed { index, problemRecord ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    modifier = Modifier
+                        .weight(1f)
+                        .wrapContentHeight(),
+                    text = "${index + 1}"
+                )
+                Text(
+                    modifier = Modifier
+                        .weight(1f)
+                        .wrapContentHeight(),
+                    text = problemRecord.solvedAt.format(DateTimeFormatter.ofPattern("MM/dd"))
+                )
+                Text(
+                    modifier = Modifier
+                        .weight(1f)
+                        .wrapContentHeight(),
+                    text = when (problemRecord.grade) {
+                        CORRECT -> "O"
+                        WRONG -> "X"
+                        AMBIGUOUS -> "?"
+                    }
+                )
+                Text(
+                    modifier = Modifier
+                        .weight(1f)
+                        .wrapContentHeight(),
+                    text = toTimeFormat(problemRecord.timeRecord)
+                )
+            }
+        }
+    }
+}
+
 fun setPage(pageString: String, pageViewModel: PageViewModel, pages: List<Int>, alert: () -> Unit) =
     try {
         val page = pageString.toInt()
@@ -402,3 +560,10 @@ fun setPage(pageString: String, pageViewModel: PageViewModel, pages: List<Int>, 
 
 fun notifyPageOutOfRange(context: Context, pages: List<Int>)
         = Toast.makeText(context, "${pages.first()}과 ${pages.last()} 사이의 값을 입력해주세요", Toast.LENGTH_SHORT).show()
+
+fun toTimeFormat(timeRecord: Int): String {
+    val ms = (timeRecord / 100) % 10
+    val s = (timeRecord / 1000) % 60
+    val m = (timeRecord / 100000) % 60
+    return String.format("%02d:%02d:%01d", m, s, ms)
+}

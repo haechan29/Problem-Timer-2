@@ -82,6 +82,8 @@ import com.hc.problem_timer_2.util.WRONG
 import com.hc.problem_timer_2.util.added
 import com.hc.problem_timer_2.viewmodel.BookListViewModel
 import com.hc.problem_timer_2.viewmodel.PageViewModel
+import com.hc.problem_timer_2.viewmodel.ProblemListViewModel
+import com.hc.problem_timer_2.viewmodel.ProblemRecordListViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -408,21 +410,15 @@ fun BooksToAddTab(books: List<String>, getSelectedItemIndex: () -> Int?, setSele
 }
 
 @Composable
-fun ProblemListTab() {
-    val problems = listOf(Problem("1"), Problem("2"), Problem("3"))
-    val problemRecordListMap = listOf(
-        ProblemRecord("1", 50_000, WRONG, LocalDate.now().plusDays(-1)),
-        ProblemRecord("1", 45_000, CORRECT, LocalDate.now())
-    ).fold(mutableMapOf<String, MutableList<ProblemRecord>>()) { map, problemRecord ->
-        val problemRecordsWithTheNumber = map[problemRecord.number] ?: mutableListOf()
-        map[problemRecord.number] =
-            problemRecordsWithTheNumber
-                .added(problemRecord)
-                .sortedByDescending { it.solvedAt }
-                .take(3)
-                .toMutableList()
-        map
-    }
+fun ProblemListTab(
+    problemListViewModel: ProblemListViewModel = viewModel(),
+    problemRecordListViewModel: ProblemRecordListViewModel = viewModel()
+) {
+    problemListViewModel.getProblemsFromLocalDB()
+    problemRecordListViewModel.getProblemRecordsFromLocalDB()
+    val problems by problemListViewModel.problems.observeAsState()
+    val problemRecordList by problemRecordListViewModel.problemRecordList.observeAsState()
+    val problemRecordListMap = toProblemRecordListMap(problemRecordList!!)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -430,7 +426,7 @@ fun ProblemListTab() {
         verticalArrangement = Arrangement.spacedBy(10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        items(problems) { problem ->
+        items(problems!!) { problem ->
             val problemRecords = problemRecordListMap[problem.number]
             Card(
                 modifier = Modifier
@@ -546,7 +542,7 @@ fun ProblemRecordListTab(problemRecords: MutableList<ProblemRecord>) {
     }
 }
 
-fun setPage(pageString: String, pageViewModel: PageViewModel, pages: List<Int>, alert: () -> Unit) =
+private fun setPage(pageString: String, pageViewModel: PageViewModel, pages: List<Int>, alert: () -> Unit) =
     try {
         val page = pageString.toInt()
         invokeAndBlock(SET_PAGE, 500) {
@@ -558,12 +554,24 @@ fun setPage(pageString: String, pageViewModel: PageViewModel, pages: List<Int>, 
         alert()
     }
 
-fun notifyPageOutOfRange(context: Context, pages: List<Int>)
+private fun notifyPageOutOfRange(context: Context, pages: List<Int>)
         = Toast.makeText(context, "${pages.first()}과 ${pages.last()} 사이의 값을 입력해주세요", Toast.LENGTH_SHORT).show()
 
-fun toTimeFormat(timeRecord: Int): String {
+private fun toTimeFormat(timeRecord: Int): String {
     val ms = (timeRecord / 100) % 10
     val s = (timeRecord / 1000) % 60
     val m = (timeRecord / 100000) % 60
     return String.format("%02d:%02d:%01d", m, s, ms)
 }
+
+private fun toProblemRecordListMap(problemRecordList: List<ProblemRecord>) = problemRecordList
+    .fold(mutableMapOf<String, MutableList<ProblemRecord>>()) { map, problemRecord ->
+        val problemRecordsWithTheNumber = map[problemRecord.number] ?: mutableListOf()
+        map[problemRecord.number] =
+            problemRecordsWithTheNumber
+                .added(problemRecord)
+                .sortedByDescending { it.solvedAt }
+                .take(3)
+                .toMutableList()
+        map
+    }

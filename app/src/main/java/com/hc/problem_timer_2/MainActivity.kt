@@ -5,10 +5,17 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -52,8 +59,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -62,6 +71,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
@@ -73,6 +83,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hc.problem_timer_2.MainActivity.Companion.PAGE_ITEM_SIZE
 import com.hc.problem_timer_2.ui.theme.Primary
 import com.hc.problem_timer_2.ui.theme.ProblemTimer2Theme
+import com.hc.problem_timer_2.ui.theme.SecondPrimary
 import com.hc.problem_timer_2.util.AMBIGUOUS
 import com.hc.problem_timer_2.util.CORRECT
 import com.hc.problem_timer_2.util.FlagController.invokeAndBlock
@@ -85,6 +96,7 @@ import com.hc.problem_timer_2.viewmodel.PageViewModel
 import com.hc.problem_timer_2.viewmodel.ProblemListViewModel
 import com.hc.problem_timer_2.viewmodel.ProblemRecordListViewModel
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.LocalDate
@@ -114,9 +126,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun TimerScreen(
-    bookListViewModel: BookListViewModel = viewModel()
-) {
+fun TimerScreen() {
     var isGradeMode by remember { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxSize()) {
         var isShowingAddBookDialog by remember { mutableStateOf(false) }
@@ -432,17 +442,23 @@ fun ProblemListTab(
                 modifier = Modifier
                     .fillMaxWidth()
                     .wrapContentHeight()
-                    .padding(10.dp)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .wrapContentHeight()
+                        .padding(10.dp)
                 ) {
                     var isShowingProblemRecords by remember { mutableStateOf(false) }
-                    ProblemTab(problem, problemRecords?.first()) { isShowingProblemRecords = !isShowingProblemRecords }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    if (isShowingProblemRecords) {
+                    ProblemTab(problem,problemRecords?.first()) {
+                        isShowingProblemRecords = !isShowingProblemRecords
+                    }
+                    AnimatedVisibility(
+                        visible = isShowingProblemRecords,
+                        enter = expandVertically(expandFrom = Alignment.Top),
+                        exit = shrinkVertically(shrinkTowards = Alignment.Top)
+                    ) {
+                        Spacer(modifier = Modifier.height(10.dp))
                         if (problemRecords != null) {
                             ProblemRecordListTab(problemRecords)
                         }
@@ -457,7 +473,26 @@ fun ProblemListTab(
 fun ProblemTab(
     problem: Problem,
     recentProblemRecord: ProblemRecord?,
-    toggleVisibility: () -> Unit) {
+    toggleVisibility: () -> Unit
+) {
+    var isFolded by remember { mutableStateOf(true) }
+    val viewMoreIconRotationZ by animateFloatAsState(
+        targetValue = if (isFolded) 0f else 180f,
+        animationSpec = tween(200),
+        label = "rotationZ for view more icon"
+    )
+    var isTimerRunning by remember { mutableStateOf(false) }
+    val timeRecord =
+        if (recentProblemRecord != null && recentProblemRecord.solvedAt.isBefore(LocalDate.now()))
+            recentProblemRecord.timeRecord
+        else 0
+    var measuredTime by remember { mutableIntStateOf(timeRecord) }
+    LaunchedEffect(key1 = isTimerRunning) {
+        while (isTimerRunning) {
+            delay(100)
+            measuredTime += 100
+        }
+    }
     Row(
         modifier = Modifier
             .fillMaxSize()
@@ -465,11 +500,6 @@ fun ProblemTab(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val timeRecord =
-            if (recentProblemRecord != null && recentProblemRecord.solvedAt.isBefore(LocalDate.now()))
-                recentProblemRecord.timeRecord
-            else 0
-
         Text(
             modifier = Modifier
                 .width(50.dp)
@@ -478,18 +508,34 @@ fun ProblemTab(
             fontSize = 14.sp,
             textAlign = TextAlign.Center
         )
-        Text(
+        Box(
             modifier = Modifier
                 .weight(1f)
-                .wrapContentHeight(),
-            text = toTimeFormat(timeRecord),
-            fontSize = 14.sp,
-            textAlign = TextAlign.Center
-        )
-        IconButton(onClick = toggleVisibility) {
+                .fillMaxHeight()
+                .clickable { isTimerRunning = !isTimerRunning },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
+                text = toTimeFormat(measuredTime),
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center
+            )
+        }
+        IconButton(
+            onClick = {
+                toggleVisibility()
+                isFolded = !isFolded
+            }
+        ) {
             Icon(
                 imageVector = Icons.Default.ArrowDropDown,
-                contentDescription = "show problem records"
+                contentDescription = "show problem records",
+                modifier = Modifier.graphicsLayer {
+                    rotationZ = viewMoreIconRotationZ
+                }
             )
         }
     }
@@ -501,8 +547,9 @@ fun ProblemRecordListTab(problemRecords: MutableList<ProblemRecord>) {
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
+            .background(color = SecondPrimary, shape = RoundedCornerShape(10.dp))
     ) {
-        problemRecords.mapIndexed { index, problemRecord ->
+        problemRecords.map { problemRecord ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -513,13 +560,15 @@ fun ProblemRecordListTab(problemRecords: MutableList<ProblemRecord>) {
                     modifier = Modifier
                         .weight(1f)
                         .wrapContentHeight(),
-                    text = "${index + 1}"
+                    text = problemRecord.solvedAt.format(DateTimeFormatter.ofPattern("MM/dd")),
+                    textAlign = TextAlign.Center
                 )
                 Text(
                     modifier = Modifier
-                        .weight(1f)
+                        .weight(2f)
                         .wrapContentHeight(),
-                    text = problemRecord.solvedAt.format(DateTimeFormatter.ofPattern("MM/dd"))
+                    text = toSimpleTimeFormat(problemRecord.timeRecord),
+                    textAlign = TextAlign.Center
                 )
                 Text(
                     modifier = Modifier
@@ -529,20 +578,15 @@ fun ProblemRecordListTab(problemRecords: MutableList<ProblemRecord>) {
                         CORRECT -> "O"
                         WRONG -> "X"
                         AMBIGUOUS -> "?"
-                    }
-                )
-                Text(
-                    modifier = Modifier
-                        .weight(1f)
-                        .wrapContentHeight(),
-                    text = toTimeFormat(problemRecord.timeRecord)
+                    },
+                    textAlign = TextAlign.Center
                 )
             }
         }
     }
 }
 
-private fun setPage(pageString: String, pageViewModel: PageViewModel, pages: List<Int>, alert: () -> Unit) =
+fun setPage(pageString: String, pageViewModel: PageViewModel, pages: List<Int>, alert: () -> Unit) =
     try {
         val page = pageString.toInt()
         invokeAndBlock(SET_PAGE, 500) {
@@ -554,17 +598,27 @@ private fun setPage(pageString: String, pageViewModel: PageViewModel, pages: Lis
         alert()
     }
 
-private fun notifyPageOutOfRange(context: Context, pages: List<Int>)
+fun notifyPageOutOfRange(context: Context, pages: List<Int>)
         = Toast.makeText(context, "${pages.first()}과 ${pages.last()} 사이의 값을 입력해주세요", Toast.LENGTH_SHORT).show()
 
-private fun toTimeFormat(timeRecord: Int): String {
+fun toTimeFormat(timeRecord: Int): String {
     val ms = (timeRecord / 100) % 10
-    val s = (timeRecord / 1000) % 60
-    val m = (timeRecord / 100000) % 60
+    val s = (timeRecord / 1_000) % 60
+    val m = (timeRecord / 100_000) % 60
     return String.format("%02d:%02d:%01d", m, s, ms)
 }
 
-private fun toProblemRecordListMap(problemRecordList: List<ProblemRecord>) = problemRecordList
+fun toSimpleTimeFormat(timeRecord: Int): String {
+    val s = (timeRecord / 1_000) % 60
+    val m = (timeRecord / 100_000) % 60
+
+    val sb = StringBuilder()
+    if (m > 0) sb.append("${m}분 ")
+    sb.append("${s}초")
+    return sb.toString()
+}
+
+fun toProblemRecordListMap(problemRecordList: List<ProblemRecord>) = problemRecordList
     .fold(mutableMapOf<String, MutableList<ProblemRecord>>()) { map, problemRecord ->
         val problemRecordsWithTheNumber = map[problemRecord.number] ?: mutableListOf()
         map[problemRecord.number] =

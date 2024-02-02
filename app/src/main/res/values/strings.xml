@@ -3,4 +3,5 @@
     <string name="view_problems">문제\n보기</string>
     <string name="finish_grade">채점\n완료</string>
     <string name="grade">채점\n하기</string>
+    <string name="select_book">교재를 선택해주세요</string>
 </resources>

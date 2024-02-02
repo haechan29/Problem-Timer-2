@@ -3,13 +3,11 @@ package com.hc.problem_timer_2.viewmodel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.hc.problem_timer_2.ProblemRecord
+import com.hc.problem_timer_2.data_class.ProblemRecord
 import com.hc.problem_timer_2.util.Correct
 import com.hc.problem_timer_2.util.Wrong
 import com.hc.problem_timer_2.util.added
 import com.hc.problem_timer_2.util.removed
-import timber.log.Timber
-import java.time.LocalDate
 import java.time.LocalDateTime
 
 class ProblemRecordListViewModel: ViewModel() {

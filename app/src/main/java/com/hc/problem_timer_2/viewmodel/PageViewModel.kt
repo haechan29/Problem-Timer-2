@@ -5,7 +5,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 
 class PageViewModel: ViewModel() {
-    private val _page = MutableLiveData<Int>(null)
+    private val _page = MutableLiveData<Int>()
     val page: LiveData<Int> get() = _page
 
     fun setPage(value: Int) = _page.postValue(value)

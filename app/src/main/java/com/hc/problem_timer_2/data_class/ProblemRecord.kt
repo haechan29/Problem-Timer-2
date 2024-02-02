@@ -1,7 +1,6 @@
-package com.hc.problem_timer_2
+package com.hc.problem_timer_2.data_class
 
 import com.hc.problem_timer_2.util.Grade
-import java.time.LocalDate
 import java.time.LocalDateTime
 
 data class ProblemRecord(

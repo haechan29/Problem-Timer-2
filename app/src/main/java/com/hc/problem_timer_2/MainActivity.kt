@@ -8,7 +8,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateSizeAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -104,9 +103,13 @@ import timber.log.Timber
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import androidx.compose.ui.text.font.lerp
+import com.hc.problem_timer_2.data_class.Book
+import com.hc.problem_timer_2.data_class.Problem
+import com.hc.problem_timer_2.data_class.ProblemRecord
 import com.hc.problem_timer_2.ui.theme.BackgroundGrey
 import com.hc.problem_timer_2.util.Grade
 import com.hc.problem_timer_2.util.Unranked
+import com.hc.problem_timer_2.viewmodel.BookViewModel
 import java.time.LocalDateTime
 
 
@@ -162,10 +165,19 @@ fun TimerScreen() {
 @Composable
 fun BookTab(
     bookListViewModel: BookListViewModel = viewModel(),
+    bookViewModel: BookViewModel = viewModel(),
+    pageViewModel: PageViewModel = viewModel(),
     showAddBookDialog: () -> Unit
 ) {
     val books by bookListViewModel.bookList.observeAsState()
     var selectedItemIndex by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(key1 = selectedItemIndex) {
+        if (selectedItemIndex == null) return@LaunchedEffect
+        val book = books!![selectedItemIndex!!]
+        bookViewModel.setBook(book)
+        pageViewModel.setPage(book.pages.first())
+    }
+
     LazyRow(
         modifier = Modifier
             .padding(all = 10.dp)
@@ -187,7 +199,7 @@ fun BookTab(
                     ),
                     onClick = { selectedItemIndex = itemIndex }
                 ) {
-                    Text(text = books!![itemIndex])
+                    Text(text = books!![itemIndex].name)
                 }
             } else {
                 IconButton(
@@ -211,7 +223,10 @@ fun BookTab(
 }
 
 @Composable
-fun PageAndGradeTab(isGradeMode: () -> Boolean, setGradeMode: (Boolean) -> Unit) {
+fun PageAndGradeTab(
+    isGradeMode: () -> Boolean,
+    setGradeMode: (Boolean) -> Unit
+) {
     Row(
         modifier = Modifier
             .padding(start = 5.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
@@ -227,36 +242,47 @@ fun PageAndGradeTab(isGradeMode: () -> Boolean, setGradeMode: (Boolean) -> Unit)
 
 @Composable
 fun PageTab(
+    bookViewModel: BookViewModel = viewModel(),
     pageViewModel: PageViewModel = viewModel(),
     scope: CoroutineScope = rememberCoroutineScope(),
     context: Context = LocalContext.current,
     listState: LazyListState = LazyListState()
 ) {
+    val book by bookViewModel.book.observeAsState()
+    val pages = book?.pages
+    val page by pageViewModel.page.observeAsState()
+
     Row(
         modifier = Modifier
             .wrapContentWidth()
             .fillMaxHeight(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val pages = (1 .. 100).toList()
-        val page by pageViewModel.page.observeAsState()
-        page ?: run { pageViewModel.setPage(pages.first()) }
         LaunchedEffect(key1 = page) {
+            if (pages == null) return@LaunchedEffect
             val index = pages.indexOf(page)
             if (index == -1) return@LaunchedEffect
             scope.launch { listState.animateScrollToItem(index) }
         }
 
         PageButton(true) {
-            val index = pages.indexOf(page)
+            if (book == null) {
+                Toast.makeText(context, context.getString(R.string.select_book), Toast.LENGTH_SHORT).show()
+                return@PageButton
+            }
+            val index = pages!!.indexOf(page)
             if (index < 0) return@PageButton
             setPage((page!! - 1).toString(), pageViewModel, pages) {
                 notifyPageOutOfRange(context, pages)
             }
         }
-        PageBox(pages = pages, listState = listState)
+        PageBox(pages, listState) { bookViewModel.book.isInitialized }
         PageButton(false) {
-            val index = pages.indexOf(page)
+            if (book == null) {
+                Toast.makeText(context, context.getString(R.string.select_book), Toast.LENGTH_SHORT).show()
+                return@PageButton
+            }
+            val index = pages!!.indexOf(page)
             if (index < 0) return@PageButton
             setPage((page!! + 1).toString(), pageViewModel, pages) {
                 notifyPageOutOfRange(context, pages)
@@ -288,9 +314,10 @@ fun PageButton(
 
 @Composable
 fun PageBox(
+    pages: List<Int>?,
+    listState: LazyListState,
     pageViewModel: PageViewModel = viewModel(),
-    pages: List<Int>,
-    listState: LazyListState
+    isBookInitialized: () -> Boolean
 ) {
     var pageInput by remember { mutableStateOf("") }
     var isPageBoxFocused by remember { mutableStateOf(false) }
@@ -301,12 +328,16 @@ fun PageBox(
         modifier = Modifier
             .width(PAGE_ITEM_SIZE.dp * 1.5f)
             .fillMaxHeight()
-            .border(width = 1.dp, color = Color.Black, shape = RoundedCornerShape(5.dp)),
+            .border(width = 1.dp, color = Color.Black, shape = RoundedCornerShape(5.dp))
+            .clickable {
+                if (!isBookInitialized()) Toast.makeText(context, context.getString(R.string.select_book), Toast.LENGTH_SHORT).show()
+            },
         verticalAlignment = Alignment.CenterVertically,
         state = listState,
         contentPadding = PaddingValues(horizontal = 10.dp),
         userScrollEnabled = false
     ) {
+        if (pages == null) return@LazyRow
         items(pages.size) { itemIdx ->
             BasicTextField(
                 modifier = Modifier
@@ -390,8 +421,9 @@ fun AddBookDialog(
     bookListViewModel: BookListViewModel = viewModel(),
     hideDialog: () -> Unit
 ) {
-    val books = listOf("책1", "책2")
+    val books = listOf(Book("책1"), Book("책2"))
     var selectedItemIndex by remember { mutableStateOf<Int?>(null) }
+
     AlertDialog(
         title = { Text(text = "선택된 교재를 추가합니다", fontSize = 16.sp) },
         text = { BooksToAddTab(books, { selectedItemIndex }) { value: Int -> selectedItemIndex = value } },
@@ -425,7 +457,7 @@ fun AddBookDialog(
 }
 
 @Composable
-fun BooksToAddTab(books: List<String>, getSelectedItemIndex: () -> Int?, setSelectedItemIndex: (Int) -> Unit) {
+fun BooksToAddTab(books: List<Book>, getSelectedItemIndex: () -> Int?, setSelectedItemIndex: (Int) -> Unit) {
     val scrollState = rememberScrollState()
     Row(
         modifier = Modifier
@@ -447,7 +479,7 @@ fun BooksToAddTab(books: List<String>, getSelectedItemIndex: () -> Int?, setSele
                 ),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 5.dp)
             ) {
-                Text(text = book)
+                Text(text = book.name)
             }
         }
     }

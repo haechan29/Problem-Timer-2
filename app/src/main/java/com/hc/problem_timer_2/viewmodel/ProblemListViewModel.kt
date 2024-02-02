@@ -3,7 +3,7 @@ package com.hc.problem_timer_2.viewmodel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.hc.problem_timer_2.Problem
+import com.hc.problem_timer_2.data_class.Problem
 import com.hc.problem_timer_2.util.added
 import com.hc.problem_timer_2.util.removed
 

@@ -14,6 +14,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,17 +31,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -115,6 +119,7 @@ import com.hc.problem_timer_2.util.Unranked
 import com.hc.problem_timer_2.viewmodel.BookViewModel
 import java.lang.IndexOutOfBoundsException
 import java.time.LocalDateTime
+import kotlin.coroutines.EmptyCoroutineContext
 
 
 class MainActivity : ComponentActivity() {
@@ -245,7 +250,7 @@ fun PageTab(
     bookViewModel: BookViewModel = viewModel(),
     scope: CoroutineScope = rememberCoroutineScope(),
     context: Context = LocalContext.current,
-    listState: LazyListState = LazyListState()
+    listState: LazyListState = rememberLazyListState()
 ) {
     val book by bookViewModel.book.observeAsState()
     val pages = book?.problems?.map { problem -> problem.page }?.distinct()
@@ -527,7 +532,6 @@ fun ColumnScope.ProblemListTab(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Timber.d("$problems")
                 items(problems!!) { problem ->
                     val problemRecords = problemRecordListMap[problem.number]
                     var color by remember { mutableStateOf(BackgroundGrey) }
@@ -551,7 +555,7 @@ fun ColumnScope.ProblemListTab(
                             }
                             ProblemTab(
                                 problem,
-                                problemRecords?.first(),
+                                problemRecords,
                                 isGradeMode,
                                 { isShowingProblemRecords },
                                 { isShowingProblemRecords = !isShowingProblemRecords },
@@ -576,7 +580,7 @@ fun ColumnScope.ProblemListTab(
 @Composable
 fun ProblemTab(
     problem: Problem,
-    recentProblemRecord: ProblemRecord?,
+    problemRecords: List<ProblemRecord>?,
     isGradeMode: () -> Boolean,
     getVisibility: () -> Boolean,
     toggleVisibility: () -> Unit,
@@ -592,6 +596,8 @@ fun ProblemTab(
     var isTimerRunning by remember { mutableStateOf(false) }
     var currentTimeRecord by remember { mutableIntStateOf(0) }
     var currentGrade: Grade by remember { mutableStateOf(Unranked) }
+    val recentProblemRecord = problemRecords?.first()
+
     LaunchedEffect(key1 = isTimerRunning) {
         while (isTimerRunning) {
             delay(100)
@@ -616,21 +622,41 @@ fun ProblemTab(
             setColor(currentGrade.color)
         }
     }
+
     Row(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .height(100.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            modifier = Modifier
-                .width(50.dp)
-                .wrapContentHeight(),
-            text = problem.number,
-            fontSize = 14.sp,
-            textAlign = TextAlign.Center
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(
+                modifier = Modifier
+                    .width(50.dp)
+                    .weight(1f),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                Row(modifier = Modifier.wrapContentSize()) {
+                    problemRecords?.reversed()?.forEach { problemRecord ->
+                        Text(
+                            modifier = Modifier
+                                .width(15.dp)
+                                .wrapContentHeight(),
+                            text = problemRecord.grade.text,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+            Text(
+                modifier = Modifier.wrapContentSize(),
+                text = problem.number,
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.weight(1f))
+        }
         Box(
             modifier = Modifier
                 .weight(1f)

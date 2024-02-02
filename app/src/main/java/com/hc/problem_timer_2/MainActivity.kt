@@ -539,7 +539,7 @@ fun ProblemTab(
     }
     LaunchedEffect(key1 = isGradeMode()) {
         isTimerRunning = false
-        if (!isGradeMode() && currentGrade !is Unranked) {
+        if (!isGradeMode() && !shouldWaitToRecordAgain(recentProblemRecord) && currentGrade !is Unranked) {
             problemRecordListViewModel.addProblemRecord(
                 ProblemRecord(
                     problem.number,

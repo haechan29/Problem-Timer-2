@@ -5,9 +5,10 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.animateSizeAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -47,6 +48,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -67,6 +69,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
@@ -75,6 +78,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -85,12 +89,9 @@ import com.hc.problem_timer_2.MainActivity.Companion.PAGE_ITEM_SIZE
 import com.hc.problem_timer_2.ui.theme.Primary
 import com.hc.problem_timer_2.ui.theme.ProblemTimer2Theme
 import com.hc.problem_timer_2.ui.theme.SecondPrimary
-import com.hc.problem_timer_2.util.AMBIGUOUS
-import com.hc.problem_timer_2.util.CORRECT
 import com.hc.problem_timer_2.util.FlagController.invokeAndBlock
 import com.hc.problem_timer_2.util.Flag.*
 import com.hc.problem_timer_2.util.TimberDebugTree
-import com.hc.problem_timer_2.util.WRONG
 import com.hc.problem_timer_2.util.added
 import com.hc.problem_timer_2.viewmodel.BookListViewModel
 import com.hc.problem_timer_2.viewmodel.PageViewModel
@@ -103,12 +104,16 @@ import timber.log.Timber
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import androidx.compose.ui.text.font.lerp
-import androidx.compose.ui.graphics.lerp
+import com.hc.problem_timer_2.ui.theme.BackgroundGrey
+import com.hc.problem_timer_2.util.Grade
+import com.hc.problem_timer_2.util.Unranked
+import java.time.LocalDateTime
 
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        getDataFromViewModels()
         setContent {
             ProblemTimer2Theme {
                 // A surface container using the 'background' color from the theme
@@ -126,6 +131,16 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val PAGE_ITEM_SIZE = 40
     }
+}
+
+fun ComponentActivity.getDataFromViewModels() {
+    val bookListViewModel: BookListViewModel by viewModels()
+    val problemListViewModel: ProblemListViewModel by viewModels()
+    val problemRecordListViewModel: ProblemRecordListViewModel by viewModels()
+
+    bookListViewModel.getBookListFromLocalDB()
+    problemListViewModel.getProblemsFromLocalDB()
+    problemRecordListViewModel.getProblemRecordsFromLocalDB()
 }
 
 @Composable
@@ -149,7 +164,6 @@ fun BookTab(
     bookListViewModel: BookListViewModel = viewModel(),
     showAddBookDialog: () -> Unit
 ) {
-    bookListViewModel.getBookListFromLocalDB()
     val books by bookListViewModel.bookList.observeAsState()
     var selectedItemIndex by remember { mutableStateOf<Int?>(null) }
     LazyRow(
@@ -327,13 +341,16 @@ fun PageBox(
 }
 
 @Composable
-fun GradeTab(isGradeMode: () -> Boolean, setGradeMode: (Boolean) -> Unit) {
-    val progress by animateFloatAsState(targetValue = if (isGradeMode()) 1f else 0f, label = "")
+fun GradeTab(isGradeMode: () -> Boolean, setGradeMode: (Boolean) -> Unit, context: Context = LocalContext.current) {
+    var text by remember { mutableStateOf(context.getString(R.string.view_problems)) }
+    val progress by animateFloatAsState(
+        targetValue = if (isGradeMode()) 1f else 0f,
+        label = "",
+        finishedListener = { text = if (isGradeMode()) context.getString(R.string.finish_grade) else context.getString(R.string.view_problems) }
+    )
     val focusedWeight = lerp(FontWeight.ExtraBold, FontWeight.Normal, progress)
     val unfocusedWeight = lerp(FontWeight.ExtraBold, FontWeight.Normal, 1 - progress)
-    LaunchedEffect(key1 = isGradeMode()) {
 
-    }
     Row(
         modifier = Modifier
             .wrapContentWidth()
@@ -341,7 +358,7 @@ fun GradeTab(isGradeMode: () -> Boolean, setGradeMode: (Boolean) -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "문제\n보기",
+            text = text,
             lineHeight = 14.sp,
             fontSize = 12.sp,
             fontWeight = focusedWeight
@@ -360,7 +377,7 @@ fun GradeTab(isGradeMode: () -> Boolean, setGradeMode: (Boolean) -> Unit) {
         )
         Spacer(modifier = Modifier.width(10.dp))
         Text(
-            text = "채점\n하기",
+            text = stringResource(R.string.grade),
             lineHeight = 14.sp,
             fontSize = 12.sp,
             fontWeight = unfocusedWeight
@@ -442,8 +459,6 @@ fun ProblemListTab(
     problemRecordListViewModel: ProblemRecordListViewModel = viewModel(),
     isGradeMode: () -> Boolean
 ) {
-    problemListViewModel.getProblemsFromLocalDB()
-    problemRecordListViewModel.getProblemRecordsFromLocalDB()
     val problems by problemListViewModel.problems.observeAsState()
     val problemRecordList by problemRecordListViewModel.problemRecordList.observeAsState()
     val problemRecordListMap = toProblemRecordListMap(problemRecordList!!)
@@ -456,10 +471,14 @@ fun ProblemListTab(
     ) {
         items(problems!!) { problem ->
             val problemRecords = problemRecordListMap[problem.number]
+            var color by remember { mutableStateOf(BackgroundGrey) }
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .wrapContentHeight()
+                    .wrapContentHeight(),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (!isGradeMode()) BackgroundGrey else color
+                )
             ) {
                 Column(
                     modifier = Modifier
@@ -476,7 +495,8 @@ fun ProblemListTab(
                         problemRecords?.first(),
                         isGradeMode,
                         { isShowingProblemRecords },
-                        { isShowingProblemRecords = !isShowingProblemRecords }
+                        { isShowingProblemRecords = !isShowingProblemRecords },
+                        { value: Color -> color = value }
                     )
                     AnimatedVisibility(
                         visible = isShowingProblemRecords,
@@ -484,9 +504,7 @@ fun ProblemListTab(
                         exit = shrinkVertically(shrinkTowards = Alignment.Top)
                     ) {
                         Spacer(modifier = Modifier.height(10.dp))
-                        if (problemRecords != null) {
-                            ProblemRecordListTab(problemRecords)
-                        }
+                        ProblemRecordListTab(problemRecords)
                     }
                 }
             }
@@ -500,7 +518,10 @@ fun ProblemTab(
     recentProblemRecord: ProblemRecord?,
     isGradeMode: () -> Boolean,
     getVisibility: () -> Boolean,
-    toggleVisibility: () -> Unit
+    toggleVisibility: () -> Unit,
+    setColor: (Color) -> Unit,
+    context: Context = LocalContext.current,
+    problemRecordListViewModel: ProblemRecordListViewModel = viewModel(),
 ) {
     val viewMoreIconRotationZ by animateFloatAsState(
         targetValue = if (!getVisibility()) 0f else 180f,
@@ -508,19 +529,31 @@ fun ProblemTab(
         label = "rotationZ for view more icon"
     )
     var isTimerRunning by remember { mutableStateOf(false) }
-    val timeRecord =
-        if (recentProblemRecord != null && recentProblemRecord.solvedAt.isBefore(LocalDate.now()))
-            recentProblemRecord.timeRecord
-        else 0
-    var measuredTime by remember { mutableIntStateOf(timeRecord) }
+    var currentTimeRecord by remember { mutableIntStateOf(0) }
+    var currentGrade: Grade by remember { mutableStateOf(Unranked) }
     LaunchedEffect(key1 = isTimerRunning) {
         while (isTimerRunning) {
             delay(100)
-            measuredTime += 100
+            currentTimeRecord += 100
         }
     }
     LaunchedEffect(key1 = isGradeMode()) {
         isTimerRunning = false
+        if (!isGradeMode() && currentGrade !is Unranked) {
+            problemRecordListViewModel.addProblemRecord(
+                ProblemRecord(
+                    problem.number,
+                    currentTimeRecord,
+                    currentGrade,
+                    LocalDateTime.now()
+                )
+            )
+        }
+    }
+    LaunchedEffect(key1 = currentGrade) {
+        if (isGradeMode()) {
+            setColor(currentGrade.color)
+        }
     }
     Row(
         modifier = Modifier
@@ -541,17 +574,54 @@ fun ProblemTab(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .clickable { isTimerRunning = !isTimerRunning },
+                .clickable {
+                    if (shouldWaitToRecordAgain(recentProblemRecord)) {
+                        if (!isGradeMode()) {
+                            Toast
+                                .makeText(
+                                    context,
+                                    "${problem.number}번 문제는 내일 다시 풀 수 있습니다",
+                                    Toast.LENGTH_SHORT
+                                )
+                                .show()
+                        } else {
+                            Toast
+                                .makeText(
+                                    context,
+                                    "${problem.number}번 문제는 내일 다시 채점할 수 있습니다",
+                                    Toast.LENGTH_SHORT
+                                )
+                                .show()
+                        }
+                    } else {
+                        if (!isGradeMode()) {
+                            isTimerRunning = !isTimerRunning
+                        } else {
+                            currentGrade = currentGrade.next()
+                        }
+                    }
+                },
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight(),
-                text = toTimeFormat(measuredTime),
-                fontSize = 14.sp,
-                textAlign = TextAlign.Center
-            )
+            if (!isGradeMode()) {
+                Text(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight(),
+                    text = if (currentTimeRecord > 0) toTimeFormat(currentTimeRecord) else "탭에서 시간 재기",
+                    fontSize = 14.sp,
+                    textAlign = TextAlign.Center
+                )
+            } else {
+                Text(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight(),
+                    text = if (currentGrade is Unranked) "탭해서 채점하기" else currentGrade.text,
+                    fontSize = 14.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
         IconButton(onClick = toggleVisibility) {
             Icon(
@@ -566,13 +636,25 @@ fun ProblemTab(
 }
 
 @Composable
-fun ProblemRecordListTab(problemRecords: MutableList<ProblemRecord>) {
+fun ProblemRecordListTab(problemRecords: MutableList<ProblemRecord>?) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
             .background(color = SecondPrimary, shape = RoundedCornerShape(10.dp))
     ) {
+        if (problemRecords == null) {
+            Text(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 10.dp),
+                text = "아직 문제를 푼 기록이 없습니다",
+                textAlign = TextAlign.Center,
+                fontSize = 12.sp,
+                lineHeight = 14.sp
+            )
+            return
+        }
         problemRecords.map { problemRecord ->
             Row(
                 modifier = Modifier
@@ -598,11 +680,7 @@ fun ProblemRecordListTab(problemRecords: MutableList<ProblemRecord>) {
                     modifier = Modifier
                         .weight(1f)
                         .wrapContentHeight(),
-                    text = when (problemRecord.grade) {
-                        CORRECT -> "O"
-                        WRONG -> "X"
-                        AMBIGUOUS -> "?"
-                    },
+                    text = problemRecord.grade.text,
                     textAlign = TextAlign.Center
                 )
             }
@@ -650,6 +728,9 @@ fun toProblemRecordListMap(problemRecordList: List<ProblemRecord>) = problemReco
                 .added(problemRecord)
                 .sortedByDescending { it.solvedAt }
                 .take(3)
-                .toMutableList()
+                .toMutableStateList()
         map
     }
+
+fun shouldWaitToRecordAgain(recentProblemRecord: ProblemRecord?) =
+    recentProblemRecord != null && recentProblemRecord.solvedAt.toLocalDate().isEqual(LocalDate.now())

@@ -7,6 +7,8 @@ import com.hc.problem_timer_2.data_class.Book
 import com.hc.problem_timer_2.data_class.Problem
 import com.hc.problem_timer_2.util.added
 import com.hc.problem_timer_2.util.removed
+import com.hc.problem_timer_2.util.updated
+import java.lang.IndexOutOfBoundsException
 
 class BookViewModel: ViewModel() {
     // book
@@ -16,24 +18,42 @@ class BookViewModel: ViewModel() {
     fun setBook(book: Book) {
         _book.value = book
         _page.value = book.getFirstPage()
+        _problems.value = book.problems
     }
 
     // page
     private val _page = MutableLiveData<Int>()
     val page: LiveData<Int> get() = _page
 
-    fun setPage(value: Int) = _page.postValue(value)
+    fun setPage(page: Int) {
+        _page.value = page
+        updateProblemsOnCurrentPage()
+    }
 
     // problems
-    private val _problems = MutableLiveData<List<Problem>>()
+    private var problemsOrigin: List<Problem>?
+        get() = book.value?.problems
+        set(value) { if (value != null) _book.value!!.problems = value }
+    private val _problems: MutableLiveData<List<Problem>> get() = MutableLiveData(problemsOrigin)
     val problems: LiveData<List<Problem>> get() = _problems
 
-    fun setProblems(problems: List<Problem>) { _problems.value = problems }
-    fun addProblem(problem: Problem) { _problems.value = _problems.value!!.added(problem) }
-    fun removeProblem(problem: Problem) { _problems.value = _problems.value!!.removed(problem) }
+    fun addProblem(problem: Problem) { problemsOrigin = problems.value!!.added(problem) }
+    fun removeProblem(problem: Problem) { problemsOrigin = problems.value!!.removed(problem) }
 
-    fun getProblemsOnCurrentPage(): List<Problem> {
-        if (book.value == null) throw UninitializedPropertyAccessException("book not initialized")
-        return book.value!!.problems.filter { problem -> problem.page == page.value }
+    fun update(problem: Problem, newNumber: String) {
+        if (problem !in problemsOrigin!!) throw IndexOutOfBoundsException("problem index out of problems")
+        val index = problemsOrigin!!.indexOf(problem)
+        problemsOrigin = problemsOrigin!!.updated(index, problem.copy(number = newNumber))
+        updateProblemsOnCurrentPage()
+    }
+
+    private val problemsOnCurrentPageOrigin: List<Problem>?
+        get() = problemsOrigin?.filter { problem -> problem.page == page.value }
+
+    private val _problemsOnCurrentPage: MutableLiveData<List<Problem>> = MutableLiveData()
+    val problemsOnCurrentPage: LiveData<List<Problem>> get() = _problemsOnCurrentPage
+
+    private fun updateProblemsOnCurrentPage() {
+        _problemsOnCurrentPage.value = problemsOnCurrentPageOrigin
     }
 }

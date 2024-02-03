@@ -14,6 +14,7 @@ fun customToast(text: String, context: Context) = Toast.makeText(context, text, 
 fun Int.toPx() = (this * Resources.getSystem().displayMetrics.density).roundToInt()
 fun Int.toDp() = (this / Resources.getSystem().displayMetrics.density).roundToInt()
 
-fun <T> List<T>.added(t: T) = this.copy().toMutableList().apply { add(t) }
-fun <T> List<T>.removed(t: T) = this.copy().toMutableList().apply { remove(t) }
-fun <T> List<T>.copy() = mutableListOf<T>().apply { addAll(this@copy) }
+fun <E> List<E>.added(e: E) = this.copy().apply { add(e) }
+fun <E> List<E>.removed(e: E) = this.copy().apply { remove(e) }
+fun <E> List<E>.updated(index: Int, e: E) = this.copy().apply { set(index, e) }
+fun <E> List<E>.copy() = mutableListOf<E>().apply { addAll(this@copy) }

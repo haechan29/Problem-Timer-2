@@ -2,7 +2,6 @@ package com.hc.problem_timer_2
 
 import android.content.Context
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -73,6 +72,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusManager
@@ -81,6 +82,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -108,13 +110,14 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import androidx.compose.ui.text.font.lerp
 import androidx.compose.ui.text.input.ImeAction
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hc.problem_timer_2.data_class.Book
 import com.hc.problem_timer_2.data_class.Problem
 import com.hc.problem_timer_2.data_class.ProblemRecord
 import com.hc.problem_timer_2.ui.theme.BackgroundGrey
 import com.hc.problem_timer_2.data_class.Grade
 import com.hc.problem_timer_2.data_class.Unranked
-import com.hc.problem_timer_2.util.customComposableToast
 import com.hc.problem_timer_2.util.customToast
 import com.hc.problem_timer_2.viewmodel.BookViewModel
 import java.lang.IndexOutOfBoundsException
@@ -143,14 +146,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-fun ComponentActivity.getDataFromViewModels() {
-    val bookListViewModel: BookListViewModel by viewModels()
-    val problemRecordListViewModel: ProblemRecordListViewModel by viewModels()
-
-    bookListViewModel.getBookListFromLocalDB()
-    problemRecordListViewModel.getProblemRecordsFromLocalDB()
-}
-
 @Composable
 fun TimerScreen() {
     var isGradeMode by remember { mutableStateOf(false) }
@@ -175,6 +170,7 @@ fun BookTab(
 ) {
     val books by bookListViewModel.bookList.observeAsState()
     var selectedItemIndex by remember { mutableStateOf<Int?>(null) }
+
     LaunchedEffect(key1 = selectedItemIndex) {
         if (selectedItemIndex == null) return@LaunchedEffect
         val book = books!![selectedItemIndex!!]
@@ -252,13 +248,12 @@ fun PageTab(
     val page by bookViewModel.page.observeAsState()
 
     LaunchedEffect(key1 = page) {
-        if (pages == null) return@LaunchedEffect
+        if (page == null) return@LaunchedEffect
+        if (pages == null) throw UninitializedPropertyAccessException("pages not initialized")
+        if (page !in pages) throw IndexOutOfBoundsException("page out of bound")
         val index = pages.indexOf(page)
-        if (index == -1) return@LaunchedEffect
         scope.launch { listState.animateScrollToItem(index) }
-
-        val problems = bookViewModel.getProblemsOnCurrentPage()
-        bookViewModel.setProblems(problems)
+        bookViewModel.setPage(page!!)
     }
 
     Row(
@@ -322,14 +317,18 @@ fun PageBox(
 ) {
     var pageInput by remember { mutableStateOf("") }
     var isPageBoxFocused by remember { mutableStateOf(false) }
-    val textColor = if (isPageBoxFocused) Color.Transparent else Color.Black
 
     LazyRow(
         modifier = Modifier
             .width(PAGE_ITEM_SIZE.dp * 1.5f)
             .fillMaxHeight()
             .border(width = 1.dp, color = Color.Black, shape = RoundedCornerShape(5.dp))
-            .clickable { if (!isBookInitialized) customToast(context.getString(R.string.select_book), context) },
+            .clickable {
+                if (!isBookInitialized) customToast(
+                    context.getString(R.string.select_book),
+                    context
+                )
+            },
         verticalAlignment = Alignment.CenterVertically,
         state = listState,
         contentPadding = PaddingValues(horizontal = 10.dp),
@@ -355,11 +354,10 @@ fun PageBox(
                 singleLine = true,
                 maxLines = 1,
                 decorationBox = { innerTextField ->
-                    if (pageInput.isEmpty()) {
+                    if (!isPageBoxFocused) {
                         Text(
                             text = "${pages[itemIdx]}",
-                            textAlign = TextAlign.Center,
-                            color = textColor
+                            textAlign = TextAlign.Center
                         )
                     }
                     innerTextField()
@@ -483,6 +481,16 @@ fun AddBookDialog(
     )
 }
 
+/*
+    setProblemsOnCurrentPage(problems.value!!.filter { problem -> problem.page == page })
+
+    private val problemsOnCurrentPageOrigin: List<Problem>?
+        get() = problemsOrigin?.filter { problem -> problem.page == page.value }
+    private val _problemsOnCurrentPage = MutableLiveData<List<Problem>>()
+    val problemsOnCurrentPage: LiveData<List<Problem>> = _problemsOnCurrentPage
+
+    private fun setProblemsOnCurrentPage(problems: List<Problem>) { _problemsOnCurrentPage.value = problems }
+ */
 
 @Composable
 fun ColumnScope.ProblemListTab(
@@ -491,17 +499,16 @@ fun ColumnScope.ProblemListTab(
     problemRecordListViewModel: ProblemRecordListViewModel = viewModel(),
     context: Context = LocalContext.current
 ) {
-    val problems by bookViewModel.problems.observeAsState()
+    val problems by bookViewModel.problemsOnCurrentPage.observeAsState()
     val problemRecordList by problemRecordListViewModel.problemRecordList.observeAsState()
     val problemRecordListMap = toProblemRecordListMap(problemRecordList!!)
-
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .weight(1f),
         contentAlignment = Alignment.Center
     ) {
-        if (problems == null) {
+        if (problems.isNullOrEmpty()) {
             Text(
                 text = context.getString(R.string.select_book),
                 fontSize = 12.sp
@@ -513,7 +520,7 @@ fun ColumnScope.ProblemListTab(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                items(problems!!) { problem ->
+                items(items = problems!!) { problem ->
                     val problemRecords = problemRecordListMap[problem.number]
                     var color by remember { mutableStateOf(BackgroundGrey) }
                     Card(
@@ -534,6 +541,7 @@ fun ColumnScope.ProblemListTab(
                             LaunchedEffect(key1 = isGradeMode) {
                                 isShowingProblemRecords = false
                             }
+
                             ProblemTab(
                                 problem,
                                 problemRecords,
@@ -574,20 +582,28 @@ fun ProblemTab(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        ProblemNumberTab(problem, problemRecords)
+        ProblemNumberTab(problem, problemRecords, isGradeMode)
         ProblemTimberTab(problem, problemRecords, isGradeMode, setColor)
         ViewMoreButton(isVisible, toggleVisibility)
     }
 }
 
 @Composable
-fun ProblemNumberTab(problem: Problem, problemRecords: List<ProblemRecord>?) {
+fun ProblemNumberTab(
+    problem: Problem,
+    problemRecords: List<ProblemRecord>?,
+    isGradeMode: Boolean,
+    focusManager: FocusManager = LocalFocusManager.current,
+    context: Context = LocalContext.current,
+    bookViewModel: BookViewModel = viewModel()
+) {
+    var isProblemNumberFocused by remember { mutableStateOf(false) }
+    var problemNumberInput by remember { mutableStateOf("") }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
                 .width(50.dp)
-                .weight(1f)
-                .clickable { if (problem.number == "1") Timber.d("problemRecords: $problemRecords") },
+                .weight(1f),
             contentAlignment = Alignment.BottomCenter
         ) {
             if (problemRecords == null) return@Box
@@ -602,11 +618,39 @@ fun ProblemNumberTab(problem: Problem, problemRecords: List<ProblemRecord>?) {
                 }
             }
         }
-        Text(
-            modifier = Modifier.wrapContentSize(),
-            text = problem.number,
-            fontSize = 14.sp,
-            textAlign = TextAlign.Center
+        BasicTextField(
+            modifier = Modifier
+                .width(60.dp)
+                .onFocusChanged { isProblemNumberFocused = it.isFocused },
+            enabled = !isGradeMode,
+            value = problemNumberInput,
+            onValueChange = { problemNumberInput = it },
+            textStyle = TextStyle(
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center
+            ),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = {
+                if (isPageNumberDuplicated(problemNumberInput, bookViewModel)) {
+                    customToast("문제 번호가 중복됩니다", context)
+                    problemNumberInput = problem.number
+                } else {
+                    bookViewModel.update(problem, problemNumberInput)
+                }
+                focusManager.clearFocus()
+                problemNumberInput = ""
+            }),
+            singleLine = true,
+            maxLines = 1,
+            decorationBox = { innerTextField ->
+                if (!isProblemNumberFocused) {
+                    Text(
+                        modifier = Modifier.wrapContentSize(),
+                        text = problem.number
+                    )
+                }
+                innerTextField()
+            }
         )
         Spacer(modifier = Modifier.weight(1f))
     }
@@ -763,6 +807,14 @@ fun ProblemRecordListTab(problemRecords: MutableList<ProblemRecord>?) {
     }
 }
 
+fun ComponentActivity.getDataFromViewModels() {
+    val bookListViewModel: BookListViewModel by viewModels()
+    val problemRecordListViewModel: ProblemRecordListViewModel by viewModels()
+
+    bookListViewModel.getBookListFromLocalDB()
+    problemRecordListViewModel.getProblemRecordsFromLocalDB()
+}
+
 fun setPage(pageString: String, bookViewModel: BookViewModel, pages: List<Int>, alert: () -> Unit) =
     try {
         val page = pageString.toInt()
@@ -796,16 +848,26 @@ fun toSimpleTimeFormat(timeRecord: Int): String {
 }
 
 fun toProblemRecordListMap(problemRecordList: List<ProblemRecord>) = problemRecordList
-    .fold(mutableMapOf<String, MutableList<ProblemRecord>>()) { map, problemRecord ->
+    .fold(mutableMapOf<String, SnapshotStateList<ProblemRecord>>()) { map, problemRecord ->
         val problemRecordsWithTheNumber = map[problemRecord.number] ?: mutableListOf()
         map[problemRecord.number] =
             problemRecordsWithTheNumber
                 .added(problemRecord)
                 .sortedByDescending { it.solvedAt }
                 .take(3)
-                .toMutableList()
+                .toMutableStateList()
         map
     }
 
 fun shouldWaitToRecordAgain(recentProblemRecord: ProblemRecord?) =
     recentProblemRecord != null && recentProblemRecord.solvedAt.toLocalDate().isEqual(LocalDate.now())
+
+fun isPageNumberDuplicated(problemNumberInput: String, bookViewModel: BookViewModel): Boolean {
+    if (bookViewModel.problems.value == null) throw UninitializedPropertyAccessException("problems not initialized")
+    val numbersInPage = bookViewModel
+        .problems
+        .value!!
+        .filter { it.page == bookViewModel.page.value }
+        .map { it.number}
+    return problemNumberInput in numbersInPage
+}

@@ -73,7 +73,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusManager
@@ -115,10 +114,11 @@ import com.hc.problem_timer_2.data_class.ProblemRecord
 import com.hc.problem_timer_2.ui.theme.BackgroundGrey
 import com.hc.problem_timer_2.data_class.Grade
 import com.hc.problem_timer_2.data_class.Unranked
+import com.hc.problem_timer_2.util.customComposableToast
+import com.hc.problem_timer_2.util.customToast
 import com.hc.problem_timer_2.viewmodel.BookViewModel
 import java.lang.IndexOutOfBoundsException
 import java.time.LocalDateTime
-
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -269,7 +269,7 @@ fun PageTab(
     ) {
         PageButton(true) {
             if (book == null) {
-                Toast.makeText(context, context.getString(R.string.select_book), Toast.LENGTH_SHORT).show()
+                customToast(context.getString(R.string.select_book), context)
                 return@PageButton
             }
             val index = pages!!.indexOf(page)
@@ -281,7 +281,7 @@ fun PageTab(
         PageBox(pages, listState, bookViewModel.book.isInitialized)
         PageButton(false) {
             if (book == null) {
-                Toast.makeText(context, context.getString(R.string.select_book), Toast.LENGTH_SHORT).show()
+                customToast(context.getString(R.string.select_book), context)
                 return@PageButton
             }
             val index = pages!!.indexOf(page)
@@ -329,11 +329,7 @@ fun PageBox(
             .width(PAGE_ITEM_SIZE.dp * 1.5f)
             .fillMaxHeight()
             .border(width = 1.dp, color = Color.Black, shape = RoundedCornerShape(5.dp))
-            .clickable {
-                if (!isBookInitialized) Toast
-                    .makeText(context, context.getString(R.string.select_book), Toast.LENGTH_SHORT)
-                    .show()
-            },
+            .clickable { if (!isBookInitialized) customToast(context.getString(R.string.select_book), context) },
         verticalAlignment = Alignment.CenterVertically,
         state = listState,
         contentPadding = PaddingValues(horizontal = 10.dp),
@@ -410,7 +406,7 @@ fun GradeTab(
             checked = isGradeMode,
             onCheckedChange = { checked ->
                 if (book != null) setGradeMode(checked)
-                else Toast.makeText(context, context.getString(R.string.select_book), Toast.LENGTH_SHORT).show()
+                else customToast(context.getString(R.string.select_book), context)
             },
             colors = SwitchDefaults.colors(
                 checkedTrackColor = Primary,
@@ -590,11 +586,13 @@ fun ProblemNumberTab(problem: Problem, problemRecords: List<ProblemRecord>?) {
         Box(
             modifier = Modifier
                 .width(50.dp)
-                .weight(1f),
+                .weight(1f)
+                .clickable { if (problem.number == "1") Timber.d("problemRecords: $problemRecords") },
             contentAlignment = Alignment.BottomCenter
         ) {
+            if (problemRecords == null) return@Box
             Row(modifier = Modifier.wrapContentSize()) {
-                problemRecords?.reversed()?.forEach { problemRecord ->
+                problemRecords.reversed().forEach { problemRecord ->
                     Text(
                         modifier = Modifier.wrapContentSize(),
                         text = problemRecord.grade.text,
@@ -659,28 +657,13 @@ fun RowScope.ProblemTimberTab(
             .fillMaxHeight()
             .clickable {
                 if (shouldWaitToRecordAgain(recentProblemRecord)) {
-                    if (!isGradeMode) {
-                        Toast
-                            .makeText(
-                                context,
-                                "${problem.number}번 문제는 내일 다시 풀 수 있습니다",
-                                Toast.LENGTH_SHORT
-                            )
-                            .show()
-                    } else {
-                        Toast
-                            .makeText(
-                                context,
-                                "${problem.number}번 문제는 내일 다시 채점할 수 있습니다",
-                                Toast.LENGTH_SHORT
-                            )
-                            .show()
-                    }
+                    if (!isGradeMode) customToast("${problem.number}번 문제는 내일 다시 풀 수 있습니다", context)
+                    else customToast("${problem.number}번 문제는 내일 다시 채점 수 있습니다", context)
                 } else {
-                    if (!isGradeMode) {
-                        isTimerRunning = !isTimerRunning
-                    } else {
-                        currentGrade = currentGrade.next()
+                    if (!isGradeMode) isTimerRunning = !isTimerRunning
+                    else {
+                        if (currentTimeRecord == 0) customToast("아직 시간이 기록되지 않았습니다", context)
+                        else currentGrade = currentGrade.next()
                     }
                 }
             },
@@ -793,7 +776,7 @@ fun setPage(pageString: String, bookViewModel: BookViewModel, pages: List<Int>, 
     }
 
 fun notifyPageOutOfRange(context: Context, pages: List<Int>)
-        = Toast.makeText(context, "${pages.first()}과 ${pages.last()} 사이의 값을 입력해주세요", Toast.LENGTH_SHORT).show()
+        = customToast("${pages.first()}과 ${pages.last()} 사이의 값을 입력해주세요", context)
 
 fun toTimeFormat(timeRecord: Int): String {
     val ms = (timeRecord / 100) % 10
@@ -820,7 +803,7 @@ fun toProblemRecordListMap(problemRecordList: List<ProblemRecord>) = problemReco
                 .added(problemRecord)
                 .sortedByDescending { it.solvedAt }
                 .take(3)
-                .toMutableStateList()
+                .toMutableList()
         map
     }
 

@@ -1,16 +1,15 @@
 package com.hc.problem_timer_2.util
 
+import android.content.Context
 import android.content.res.Resources
-import android.util.Log
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusManager
-import androidx.compose.ui.input.pointer.pointerInput
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import android.widget.Toast
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import kotlin.math.roundToInt
+
+@Composable
+fun customComposableToast(text: String, context: Context = LocalContext.current) = Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+fun customToast(text: String, context: Context) = Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
 
 fun Int.toPx() = (this * Resources.getSystem().displayMetrics.density).roundToInt()
 fun Int.toDp() = (this / Resources.getSystem().displayMetrics.density).roundToInt()

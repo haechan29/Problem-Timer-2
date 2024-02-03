@@ -46,3 +46,7 @@ object FlagController {
         }
     }
 }
+
+enum class Flag(val key: String) {
+    SET_PAGE("PAGE")
+}

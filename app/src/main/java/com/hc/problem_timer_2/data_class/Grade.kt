@@ -1,4 +1,4 @@
-package com.hc.problem_timer_2.util
+package com.hc.problem_timer_2.data_class
 
 import androidx.compose.ui.graphics.Color
 
@@ -11,7 +11,7 @@ sealed class Grade(val color: Color, val text: String) {
     }
 }
 
-data object Correct     : Grade(Color(0xff89e7f8), "O")
-data object Wrong       : Grade(Color(0xfff9d9df), "X")
-data object Ambiguous   : Grade(Color(0xfff9e586), "?")
+data object Correct     : Grade(Color(0xff89e7f8), "⭕")
+data object Wrong       : Grade(Color(0xfff9d9df), "❌")
+data object Ambiguous   : Grade(Color(0xfff9e586), "❓")
 data object Unranked    : Grade(Color.White, "")

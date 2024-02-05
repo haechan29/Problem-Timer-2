@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.kapt'
 }
 
 android {
@@ -73,4 +74,8 @@ dependencies {
 
     def livedata_version = '1.6.0'
     implementation "androidx.compose.runtime:runtime-livedata:$livedata_version"
+
+    def room_version = '2.6.1'
+    implementation "androidx.room:room-runtime:$room_version"
+    kapt "androidx.room:room-compiler:$room_version"
 }

@@ -82,7 +82,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -110,8 +109,6 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import androidx.compose.ui.text.font.lerp
 import androidx.compose.ui.text.input.ImeAction
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hc.problem_timer_2.data_class.Book
 import com.hc.problem_timer_2.data_class.Problem
 import com.hc.problem_timer_2.data_class.ProblemRecord
@@ -119,7 +116,7 @@ import com.hc.problem_timer_2.ui.theme.BackgroundGrey
 import com.hc.problem_timer_2.data_class.Grade
 import com.hc.problem_timer_2.data_class.Unranked
 import com.hc.problem_timer_2.util.customToast
-import com.hc.problem_timer_2.viewmodel.BookViewModel
+import com.hc.problem_timer_2.viewmodel.BookInfoViewModel
 import java.lang.IndexOutOfBoundsException
 import java.time.LocalDateTime
 
@@ -165,7 +162,7 @@ fun TimerScreen() {
 @Composable
 fun BookTab(
     bookListViewModel: BookListViewModel = viewModel(),
-    bookViewModel: BookViewModel = viewModel(),
+    bookInfoViewModel: BookInfoViewModel = viewModel(),
     showAddBookDialog: () -> Unit
 ) {
     val books by bookListViewModel.bookList.observeAsState()
@@ -174,7 +171,7 @@ fun BookTab(
     LaunchedEffect(key1 = selectedItemIndex) {
         if (selectedItemIndex == null) return@LaunchedEffect
         val book = books!![selectedItemIndex!!]
-        bookViewModel.setBook(book)
+        bookInfoViewModel.setBook(book)
     }
 
     LazyRow(
@@ -238,22 +235,19 @@ fun PageAndGradeTab(isGradeMode: Boolean, setGradeMode: (Boolean) -> Unit) {
 
 @Composable
 fun PageTab(
-    bookViewModel: BookViewModel = viewModel(),
+    bookInfoViewModel: BookInfoViewModel = viewModel(),
     scope: CoroutineScope = rememberCoroutineScope(),
     context: Context = LocalContext.current,
     listState: LazyListState = rememberLazyListState()
 ) {
-    val book by bookViewModel.book.observeAsState()
-    val pages = book?.problems?.map { problem -> problem.page }?.distinct()
-    val page by bookViewModel.page.observeAsState()
+    val bookInfo by bookInfoViewModel.bookInfo.observeAsState()
+    val pages = bookInfo?.getPages()
+    val currentPage = bookInfo?.getCurrentPage()
 
-    LaunchedEffect(key1 = page) {
-        if (page == null) return@LaunchedEffect
-        if (pages == null) throw UninitializedPropertyAccessException("pages not initialized")
-        if (page !in pages) throw IndexOutOfBoundsException("page out of bound")
-        val index = pages.indexOf(page)
+    LaunchedEffect(key1 = currentPage) {
+        if (currentPage == null) return@LaunchedEffect
+        val index = pages!!.indexOf(currentPage)
         scope.launch { listState.animateScrollToItem(index) }
-        bookViewModel.setPage(page!!)
     }
 
     Row(
@@ -263,25 +257,25 @@ fun PageTab(
         verticalAlignment = Alignment.CenterVertically
     ) {
         PageButton(true) {
-            if (book == null) {
+            if (bookInfo == null) {
                 customToast(context.getString(R.string.select_book), context)
                 return@PageButton
             }
-            val index = pages!!.indexOf(page)
+            val index = pages!!.indexOf(currentPage)
             if (index < 0) return@PageButton
-            setPage((page!! - 1).toString(), bookViewModel, pages) {
+            setPage((currentPage!! - 1).toString(), bookInfoViewModel, pages) {
                 notifyPageOutOfRange(context, pages)
             }
         }
-        PageBox(pages, listState, bookViewModel.book.isInitialized)
+        PageBox(pages, listState, bookInfo == null )
         PageButton(false) {
-            if (book == null) {
+            if (bookInfo == null) {
                 customToast(context.getString(R.string.select_book), context)
                 return@PageButton
             }
-            val index = pages!!.indexOf(page)
+            val index = pages!!.indexOf(currentPage)
             if (index < 0) return@PageButton
-            setPage((page!! + 1).toString(), bookViewModel, pages) {
+            setPage((currentPage!! + 1).toString(), bookInfoViewModel, pages) {
                 notifyPageOutOfRange(context, pages)
             }
         }
@@ -310,8 +304,8 @@ fun PageButton(isBeforeButton: Boolean, onClick: () -> Unit) {
 fun PageBox(
     pages: List<Int>?,
     listState: LazyListState,
-    isBookInitialized: Boolean,
-    bookViewModel: BookViewModel = viewModel(),
+    isBookSelected: Boolean,
+    bookInfoViewModel: BookInfoViewModel = viewModel(),
     focusManager: FocusManager = LocalFocusManager.current,
     context: Context = LocalContext.current
 ) {
@@ -324,7 +318,7 @@ fun PageBox(
             .fillMaxHeight()
             .border(width = 1.dp, color = Color.Black, shape = RoundedCornerShape(5.dp))
             .clickable {
-                if (!isBookInitialized) customToast(
+                if (!isBookSelected) customToast(
                     context.getString(R.string.select_book),
                     context
                 )
@@ -347,7 +341,7 @@ fun PageBox(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = {
                     focusManager.clearFocus()
-                    setPage(pageInput, bookViewModel, pages) { notifyPageOutOfRange(context, pages) }
+                    setPage(pageInput, bookInfoViewModel, pages) { notifyPageOutOfRange(context, pages) }
                     pageInput = ""
                 }),
                 textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center),
@@ -372,9 +366,9 @@ fun GradeTab(
     isGradeMode: Boolean,
     setGradeMode: (Boolean) -> Unit,
     context: Context = LocalContext.current,
-    bookViewModel: BookViewModel = viewModel()
+    bookInfoViewModel: BookInfoViewModel = viewModel()
 ) {
-    val book by bookViewModel.book.observeAsState()
+    val bookInfo by bookInfoViewModel.bookInfo.observeAsState()
     var text by remember { mutableStateOf(context.getString(R.string.view_problems)) }
     val progress by animateFloatAsState(
         targetValue = if (isGradeMode) 1f else 0f,
@@ -403,7 +397,7 @@ fun GradeTab(
                 .fillMaxHeight(),
             checked = isGradeMode,
             onCheckedChange = { checked ->
-                if (book != null) setGradeMode(checked)
+                if (bookInfo != null) setGradeMode(checked)
                 else customToast(context.getString(R.string.select_book), context)
             },
             colors = SwitchDefaults.colors(
@@ -495,13 +489,15 @@ fun AddBookDialog(
 @Composable
 fun ColumnScope.ProblemListTab(
     isGradeMode: Boolean,
-    bookViewModel: BookViewModel = viewModel(),
+    bookInfoViewModel: BookInfoViewModel = viewModel(),
     problemRecordListViewModel: ProblemRecordListViewModel = viewModel(),
     context: Context = LocalContext.current
 ) {
-    val problems by bookViewModel.problemsOnCurrentPage.observeAsState()
+    val bookInfo by bookInfoViewModel.bookInfo.observeAsState()
+    val problems = bookInfo?.getProblemsOnCurrentPage()
     val problemRecordList by problemRecordListViewModel.problemRecordList.observeAsState()
     val problemRecordListMap = toProblemRecordListMap(problemRecordList!!)
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -595,7 +591,7 @@ fun ProblemNumberTab(
     isGradeMode: Boolean,
     focusManager: FocusManager = LocalFocusManager.current,
     context: Context = LocalContext.current,
-    bookViewModel: BookViewModel = viewModel()
+    bookInfoViewModel: BookInfoViewModel = viewModel()
 ) {
     var isProblemNumberFocused by remember { mutableStateOf(false) }
     var problemNumberInput by remember { mutableStateOf("") }
@@ -631,11 +627,11 @@ fun ProblemNumberTab(
             ),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = {
-                if (isPageNumberDuplicated(problemNumberInput, bookViewModel)) {
+                if (bookInfoViewModel.isProblemNumberDuplicated(problemNumberInput)) {
                     customToast("문제 번호가 중복됩니다", context)
                     problemNumberInput = problem.number
                 } else {
-                    bookViewModel.update(problem, problemNumberInput)
+                    bookInfoViewModel.updateProblemNumber(problem, problemNumberInput)
                 }
                 focusManager.clearFocus()
                 problemNumberInput = ""
@@ -815,13 +811,13 @@ fun ComponentActivity.getDataFromViewModels() {
     problemRecordListViewModel.getProblemRecordsFromLocalDB()
 }
 
-fun setPage(pageString: String, bookViewModel: BookViewModel, pages: List<Int>, alert: () -> Unit) =
+fun setPage(pageString: String, bookInfoViewModel: BookInfoViewModel, pages: List<Int>, alert: () -> Unit) =
     try {
         val page = pageString.toInt()
         invokeAndBlock(SET_PAGE, 500) {
-            if (page !in pages)
-                throw IndexOutOfBoundsException("page out of range // page: $page, pages: ${pages.first()} - ${pages.last()}")
-            bookViewModel.setPage(page)
+            if (page !in pages) throw IndexOutOfBoundsException("page out of pages // " +
+                    "page: $page, pages: ${pages.first()} - ${pages.last()}")
+            bookInfoViewModel.setCurrentPage(page)
         }
     } catch(e: Exception) {
         alert()
@@ -861,13 +857,3 @@ fun toProblemRecordListMap(problemRecordList: List<ProblemRecord>) = problemReco
 
 fun shouldWaitToRecordAgain(recentProblemRecord: ProblemRecord?) =
     recentProblemRecord != null && recentProblemRecord.solvedAt.toLocalDate().isEqual(LocalDate.now())
-
-fun isPageNumberDuplicated(problemNumberInput: String, bookViewModel: BookViewModel): Boolean {
-    if (bookViewModel.problems.value == null) throw UninitializedPropertyAccessException("problems not initialized")
-    val numbersInPage = bookViewModel
-        .problems
-        .value!!
-        .filter { it.page == bookViewModel.page.value }
-        .map { it.number}
-    return problemNumberInput in numbersInPage
-}

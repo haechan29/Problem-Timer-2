@@ -1,4 +1,4 @@
-package com.hc.problem_timer_2.Dao
+package com.hc.problem_timer_2.dao
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -6,7 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
-import com.hc.problem_timer_2.Entity.Book
+import com.hc.problem_timer_2.entity.Book
 
 @Dao
 interface BookDao {

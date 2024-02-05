@@ -1,6 +1,7 @@
 package com.hc.problem_timer_2
 
 import android.content.Context
+import android.graphics.DiscretePathEffect
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -109,20 +110,30 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import androidx.compose.ui.text.font.lerp
 import androidx.compose.ui.text.input.ImeAction
-import com.hc.problem_timer_2.data_class.Book
+import androidx.lifecycle.viewmodel.CreationExtras
+import com.hc.problem_timer_2.data_class.BookVO
 import com.hc.problem_timer_2.data_class.Problem
 import com.hc.problem_timer_2.data_class.ProblemRecord
 import com.hc.problem_timer_2.ui.theme.BackgroundGrey
 import com.hc.problem_timer_2.data_class.Grade
 import com.hc.problem_timer_2.data_class.Unranked
+import com.hc.problem_timer_2.datasource.BookDB
+import com.hc.problem_timer_2.entity.toDto
+import com.hc.problem_timer_2.entity.toVO
 import com.hc.problem_timer_2.util.customToast
 import com.hc.problem_timer_2.viewmodel.BookInfoViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.lang.IndexOutOfBoundsException
 import java.time.LocalDateTime
+import kotlin.coroutines.EmptyCoroutineContext
+
+private lateinit var bookDB: BookDB
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        bookDB = BookDB.getDatabase(this)
         getDataFromViewModels()
         setContent {
             ProblemTimer2Theme {
@@ -452,7 +463,10 @@ fun AddBookDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    bookListViewModel.addBook(Book(bookName))
+                    CoroutineScope(EmptyCoroutineContext).launch {
+                        bookDB.bookDao().insert(BookVO(bookName).toDto())
+                    }
+//                    bookListViewModel.addBook(BookVO(bookName))
                     hideDialog()
                 }
             ) {
@@ -807,7 +821,15 @@ fun ComponentActivity.getDataFromViewModels() {
     val bookListViewModel: BookListViewModel by viewModels()
     val problemRecordListViewModel: ProblemRecordListViewModel by viewModels()
 
-    bookListViewModel.getBookListFromLocalDB()
+//    bookListViewModel.getBookListFromLocalDB()
+    CoroutineScope(EmptyCoroutineContext).launch {
+        delay(500)
+        val books = bookDB.bookDao().getBooks()
+        val bookVOList = books.map { it.toVO() }
+        withContext(Dispatchers.Main) {
+            bookListViewModel.setBookList(bookVOList)
+        }
+    }
     problemRecordListViewModel.getProblemRecordsFromLocalDB()
 }
 

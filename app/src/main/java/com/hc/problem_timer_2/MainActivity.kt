@@ -122,18 +122,17 @@ import com.hc.problem_timer_2.entity.toDto
 import com.hc.problem_timer_2.entity.toVO
 import com.hc.problem_timer_2.util.customToast
 import com.hc.problem_timer_2.viewmodel.BookInfoViewModel
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.lang.IndexOutOfBoundsException
 import java.time.LocalDateTime
 import kotlin.coroutines.EmptyCoroutineContext
 
-private lateinit var bookDB: BookDB
-
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        bookDB = BookDB.getDatabase(this)
         getDataFromViewModels()
         setContent {
             ProblemTimer2Theme {
@@ -463,9 +462,6 @@ fun AddBookDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    CoroutineScope(EmptyCoroutineContext).launch {
-                        bookDB.bookDao().insert(BookVO(bookName).toDto())
-                    }
 //                    bookListViewModel.addBook(BookVO(bookName))
                     hideDialog()
                 }
@@ -822,14 +818,6 @@ fun ComponentActivity.getDataFromViewModels() {
     val problemRecordListViewModel: ProblemRecordListViewModel by viewModels()
 
 //    bookListViewModel.getBookListFromLocalDB()
-    CoroutineScope(EmptyCoroutineContext).launch {
-        delay(500)
-        val books = bookDB.bookDao().getBooks()
-        val bookVOList = books.map { it.toVO() }
-        withContext(Dispatchers.Main) {
-            bookListViewModel.setBookList(bookVOList)
-        }
-    }
     problemRecordListViewModel.getProblemRecordsFromLocalDB()
 }
 

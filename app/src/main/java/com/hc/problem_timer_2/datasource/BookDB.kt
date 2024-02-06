@@ -13,22 +13,4 @@ import com.hc.problem_timer_2.entity.BookConverter
 @TypeConverters(BookConverter::class)
 abstract class BookDB : RoomDatabase() {
     abstract fun bookDao(): BookDao
-
-    companion object {
-        @Volatile
-        private var INSTANCE: BookDB? = null
-
-        fun getDatabase(context: Context): BookDB {
-            return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    BookDB::class.java,
-                    "book database"
-                ).build()
-                INSTANCE = instance
-
-                instance
-            }
-        }
-    }
 }

@@ -13,5 +13,5 @@ class BookRepositoryImpl @Inject constructor(private val bookDao: BookDao): Book
     override suspend fun insert(name: String, problems: List<Problem>) =
         bookDao.insert(Book(name = name, problems = problems))
     override suspend fun update(book: Book) = bookDao.update(book)
-    override suspend fun delete(book: Book) = bookDao.delete(book)
+    override suspend fun deleteById(id: Long) = bookDao.deleteById(id)
 }

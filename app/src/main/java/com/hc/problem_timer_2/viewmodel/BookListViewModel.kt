@@ -4,18 +4,13 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hc.problem_timer_2.data_class.BookVO
-import com.hc.problem_timer_2.entity.toDto
 import com.hc.problem_timer_2.entity.toVO
 import com.hc.problem_timer_2.repository.BookRepository
-import com.hc.problem_timer_2.util.added
-import com.hc.problem_timer_2.util.removed
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
@@ -40,5 +35,13 @@ class BookListViewModel @Inject constructor(private val bookRepository: BookRepo
             getBookListFromLocalDB()
         }
     }
-    fun removeBook(bookVO: BookVO) { _bookList.value = _bookList.value!!.removed(bookVO) }
+
+    fun deleteBook(id: Long) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                bookRepository.deleteById(id)
+            }
+            getBookListFromLocalDB()
+        }
+    }
 }

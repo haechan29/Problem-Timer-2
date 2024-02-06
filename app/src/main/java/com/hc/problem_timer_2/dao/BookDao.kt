@@ -21,4 +21,7 @@ interface BookDao {
 
     @Delete
     suspend fun delete(book: Book)
+
+    @Query("DELETE FROM book WHERE id = :id")
+    suspend fun deleteById(id: Long)
 }

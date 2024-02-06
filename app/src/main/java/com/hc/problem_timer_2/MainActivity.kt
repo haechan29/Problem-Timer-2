@@ -10,9 +10,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,9 +46,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
@@ -109,24 +110,17 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import androidx.compose.ui.text.font.lerp
 import androidx.compose.ui.text.input.ImeAction
-import androidx.lifecycle.viewmodel.CreationExtras
 import com.hc.problem_timer_2.data_class.BookVO
 import com.hc.problem_timer_2.data_class.Problem
 import com.hc.problem_timer_2.data_class.ProblemRecord
 import com.hc.problem_timer_2.ui.theme.BackgroundGrey
 import com.hc.problem_timer_2.data_class.Grade
 import com.hc.problem_timer_2.data_class.Unranked
-import com.hc.problem_timer_2.datasource.BookDB
-import com.hc.problem_timer_2.entity.toDto
-import com.hc.problem_timer_2.entity.toVO
 import com.hc.problem_timer_2.util.customToast
 import com.hc.problem_timer_2.viewmodel.BookInfoViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.lang.IndexOutOfBoundsException
 import java.time.LocalDateTime
-import kotlin.coroutines.EmptyCoroutineContext
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -172,14 +166,15 @@ fun TimerScreen() {
 fun BookTab(
     bookListViewModel: BookListViewModel = viewModel(),
     bookInfoViewModel: BookInfoViewModel = viewModel(),
-    showAddBookDialog: () -> Unit
+    isShowingAddBookDialog: () -> Unit
 ) {
     val books by bookListViewModel.bookList.observeAsState()
-    var selectedItemIndex by remember { mutableStateOf<Int?>(null) }
+    var selectedItemId by remember { mutableStateOf<Long?>(null) }
+    var isShowingDeleteBookBtn by remember { mutableStateOf(false) }
 
-    LaunchedEffect(key1 = selectedItemIndex) {
-        if (selectedItemIndex == null) return@LaunchedEffect
-        val book = books!![selectedItemIndex!!]
+    LaunchedEffect(key1 = selectedItemId) {
+        if (selectedItemId == null) return@LaunchedEffect
+        val book = books!!.find { it.id == selectedItemId }!!
         bookInfoViewModel.setBook(book)
     }
 
@@ -193,26 +188,21 @@ fun BookTab(
     ) {
         items(books!!.size + 1) { itemIndex ->
             if (itemIndex in books!!.indices) {
-                Button(
-                    modifier = Modifier
-                        .wrapContentWidth()
-                        .fillMaxHeight()
-                        .background(color = Color.Transparent, shape = CircleShape),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (itemIndex == selectedItemIndex) Color.Black else Color.LightGray,
-                        contentColor = if (itemIndex == selectedItemIndex) Color.White else Color.Black
-                    ),
-                    onClick = { selectedItemIndex = itemIndex }
-                ) {
-                    Text(text = books!![itemIndex].name)
-                }
+                val book = books!![itemIndex]
+                BookButton(
+                    book,
+                    selectedItemId == book.id,
+                    { id: Long -> selectedItemId = id },
+                    isShowingDeleteBookBtn,
+                    { isShowingDeleteBookBtn = !isShowingDeleteBookBtn }
+                )
             } else {
                 IconButton(
                     modifier = Modifier
                         .size(50.dp)
                         .padding(all = 5.dp)
                         .background(color = Primary, shape = CircleShape),
-                    onClick = { showAddBookDialog() },
+                    onClick = { isShowingAddBookDialog() },
                     colors = IconButtonDefaults.iconButtonColors(
                         contentColor = Color.White
                     )
@@ -222,6 +212,63 @@ fun BookTab(
                         contentDescription = "add book",
                     )
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun BookButton(
+    book: BookVO,
+    isSelected: Boolean,
+    setSelectedItemIndex: (Long) -> Unit,
+    isShowingDeleteBookBtn: Boolean,
+    toggleVisibilityOfDeleteButton: () -> Unit,
+    bookListViewModel: BookListViewModel = viewModel(),
+) {
+    Box(
+        modifier = Modifier
+            .wrapContentWidth()
+            .fillMaxHeight(),
+        contentAlignment = Alignment.TopEnd
+    ) {
+        Box(
+            modifier = Modifier
+                .wrapContentWidth()
+                .fillMaxHeight()
+                .background(
+                    color = if (isSelected) Color.Black else Color.LightGray,
+                    shape = CircleShape
+                )
+                .padding(horizontal = 15.dp)
+                .combinedClickable(
+                    onClick = { setSelectedItemIndex(book.id) },
+                    onLongClick = toggleVisibilityOfDeleteButton
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = book.name,
+                color = if (isSelected) Color.White else Color.Black
+            )
+        }
+        if (isShowingDeleteBookBtn) {
+            Box(
+                modifier = Modifier
+                    .background(color = Color.Red, shape = CircleShape)
+                    .align(Alignment.TopEnd)
+                    .clickable {
+                        bookListViewModel.deleteBook(book.id)
+                        toggleVisibilityOfDeleteButton()
+                    }
+            ) {
+                Icon(
+                    modifier = Modifier.size(20.dp).padding(3.dp),
+                    imageVector = Icons.Default.Clear,
+                    contentDescription = "delete book",
+                    tint = Color.White
+                )
             }
         }
     }

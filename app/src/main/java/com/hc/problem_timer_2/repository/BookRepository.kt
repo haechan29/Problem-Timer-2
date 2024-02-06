@@ -7,7 +7,7 @@ interface BookRepository {
     suspend fun getBooks(): List<Book>
     suspend fun insert(name: String, problems: List<Problem> = getDefaultProblems())
     suspend fun update(book: Book)
-    suspend fun delete(book: Book)
+    suspend fun deleteById(id: Long)
 }
 
 fun getDefaultProblems() = (1 .. 100).map { page ->

@@ -500,7 +500,10 @@ fun AddBookDialog(
                     focusedBorderColor = Primary
                 ),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                keyboardActions = KeyboardActions(onDone = {
+                    bookListViewModel.addBook(bookName)
+                    hideDialog()
+                }),
             )
         },
         containerColor = Color.White,

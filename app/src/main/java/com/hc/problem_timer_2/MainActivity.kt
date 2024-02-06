@@ -1,7 +1,6 @@
 package com.hc.problem_timer_2
 
 import android.content.Context
-import android.graphics.DiscretePathEffect
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -462,7 +461,7 @@ fun AddBookDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-//                    bookListViewModel.addBook(BookVO(bookName))
+                    bookListViewModel.addBook(bookName)
                     hideDialog()
                 }
             ) {
@@ -484,17 +483,6 @@ fun AddBookDialog(
         }
     )
 }
-
-/*
-    setProblemsOnCurrentPage(problems.value!!.filter { problem -> problem.page == page })
-
-    private val problemsOnCurrentPageOrigin: List<Problem>?
-        get() = problemsOrigin?.filter { problem -> problem.page == page.value }
-    private val _problemsOnCurrentPage = MutableLiveData<List<Problem>>()
-    val problemsOnCurrentPage: LiveData<List<Problem>> = _problemsOnCurrentPage
-
-    private fun setProblemsOnCurrentPage(problems: List<Problem>) { _problemsOnCurrentPage.value = problems }
- */
 
 @Composable
 fun ColumnScope.ProblemListTab(
@@ -817,7 +805,7 @@ fun ComponentActivity.getDataFromViewModels() {
     val bookListViewModel: BookListViewModel by viewModels()
     val problemRecordListViewModel: ProblemRecordListViewModel by viewModels()
 
-//    bookListViewModel.getBookListFromLocalDB()
+    bookListViewModel.getBookListFromLocalDB()
     problemRecordListViewModel.getProblemRecordsFromLocalDB()
 }
 

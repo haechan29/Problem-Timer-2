@@ -8,9 +8,7 @@ import com.hc.problem_timer_2.data_class.Problem
 
 @Entity(tableName = "book")
 data class Book(
+    @PrimaryKey(autoGenerate = true) var id: Long = 0L,
     @ColumnInfo(name = "name") val name: String,
     @ColumnInfo(name = "problems") val problems: List<Problem>
-) {
-    @PrimaryKey(autoGenerate = true)
-    var id = 0L
-}
+)

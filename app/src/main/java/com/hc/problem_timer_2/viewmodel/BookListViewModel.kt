@@ -3,22 +3,42 @@ package com.hc.problem_timer_2.viewmodel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hc.problem_timer_2.data_class.BookVO
+import com.hc.problem_timer_2.entity.toDto
+import com.hc.problem_timer_2.entity.toVO
+import com.hc.problem_timer_2.repository.BookRepository
 import com.hc.problem_timer_2.util.added
 import com.hc.problem_timer_2.util.removed
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import timber.log.Timber
+import javax.inject.Inject
 
-class BookListViewModel: ViewModel() {
+@HiltViewModel
+class BookListViewModel @Inject constructor(private val bookRepository: BookRepository): ViewModel() {
     private val _bookList = MutableLiveData(listOf<BookVO>())
     val bookList: LiveData<List<BookVO>> get() = _bookList
 
-    fun addBook(bookVO: BookVO) { _bookList.value = _bookList.value!!.added(bookVO) }
-    fun removeBook(bookVO: BookVO) { _bookList.value = _bookList.value!!.removed(bookVO) }
-
-//    fun getBookListFromLocalDB() {
-//        _bookList.value = listOf(BookVO("책1"), BookVO("책2"))
-//    }
-
-    fun setBookList(books: List<BookVO>) {
-        _bookList.value = books
+    fun getBookListFromLocalDB() {
+        viewModelScope.launch {
+            val books = withContext(Dispatchers.IO) {
+                bookRepository.getBooks().map { it.toVO() }
+            }
+            _bookList.value = books
+        }
     }
+
+    fun addBook(name: String) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                bookRepository.insert(name = name)
+            }
+            getBookListFromLocalDB()
+        }
+    }
+    fun removeBook(bookVO: BookVO) { _bookList.value = _bookList.value!!.removed(bookVO) }
 }

@@ -11,14 +11,14 @@ import com.hc.problem_timer_2.entity.Book
 @Dao
 interface BookDao {
     @Query("SELECT * FROM book")
-    fun getBooks(): List<Book>
+    suspend fun getBooks(): List<Book>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    fun insert(book: Book)
+    suspend fun insert(book: Book)
 
     @Update
-    fun update(book: Book)
+    suspend fun update(book: Book)
 
     @Delete
-    fun delete(book: Book)
+    suspend fun delete(book: Book)
 }

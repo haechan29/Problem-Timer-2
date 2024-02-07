@@ -21,7 +21,7 @@ class BookListViewModel @Inject constructor(private val bookRepository: BookRepo
     fun getBookListFromLocalDB() {
         viewModelScope.launch {
             val books = withContext(Dispatchers.IO) {
-                bookRepository.getBooks().map { it.toVO() }
+                bookRepository.getBooks()
             }
             _bookList.value = books
         }
@@ -31,6 +31,15 @@ class BookListViewModel @Inject constructor(private val bookRepository: BookRepo
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 bookRepository.insert(name = name)
+            }
+            getBookListFromLocalDB()
+        }
+    }
+
+    fun updateBook(book: BookVO) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                bookRepository.update(book)
             }
             getBookListFromLocalDB()
         }

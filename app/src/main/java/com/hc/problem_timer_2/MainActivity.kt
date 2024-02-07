@@ -169,6 +169,7 @@ fun BookTab(
     isShowingAddBookDialog: () -> Unit
 ) {
     val books by bookListViewModel.bookList.observeAsState()
+    Timber.d("current books: $books")
     var selectedItemId by remember { mutableStateOf<Long?>(null) }
     var isShowingDeleteBookBtn by remember { mutableStateOf(false) }
 
@@ -264,7 +265,9 @@ fun BookButton(
                     }
             ) {
                 Icon(
-                    modifier = Modifier.size(20.dp).padding(3.dp),
+                    modifier = Modifier
+                        .size(20.dp)
+                        .padding(3.dp),
                     imageVector = Icons.Default.Clear,
                     contentDescription = "delete book",
                     tint = Color.White
@@ -475,7 +478,6 @@ fun GradeTab(
 @Composable
 fun AddBookDialog(
     bookListViewModel: BookListViewModel = viewModel(),
-    focusManager: FocusManager = LocalFocusManager.current,
     hideDialog: () -> Unit
 ) {
     var bookName by remember { mutableStateOf("") }
@@ -639,7 +641,8 @@ fun ProblemNumberTab(
     isGradeMode: Boolean,
     focusManager: FocusManager = LocalFocusManager.current,
     context: Context = LocalContext.current,
-    bookInfoViewModel: BookInfoViewModel = viewModel()
+    bookInfoViewModel: BookInfoViewModel = viewModel(),
+    bookListViewModel: BookListViewModel = viewModel()
 ) {
     var isProblemNumberFocused by remember { mutableStateOf(false) }
     var problemNumberInput by remember { mutableStateOf("") }
@@ -680,6 +683,8 @@ fun ProblemNumberTab(
                     problemNumberInput = problem.number
                 } else {
                     bookInfoViewModel.updateProblemNumber(problem, problemNumberInput)
+                    val book = bookInfoViewModel.bookInfo.value!!.getBook()
+                    bookListViewModel.updateBook(book)
                 }
                 focusManager.clearFocus()
                 problemNumberInput = ""

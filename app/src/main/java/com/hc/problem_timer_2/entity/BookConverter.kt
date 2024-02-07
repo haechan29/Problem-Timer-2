@@ -18,4 +18,4 @@ class BookConverter {
 }
 
 fun Book.toVO() = BookVO(id = id, name = name, problems = problems)
-fun BookVO.toDto() = Book(name = name, problems = problems)
+fun BookVO.toDto() = Book(id = id, name = name, problems = problems)

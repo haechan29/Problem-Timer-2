@@ -4,8 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.hc.problem_timer_2.data_class.BookVO
-import com.hc.problem_timer_2.entity.toVO
+import com.hc.problem_timer_2.vo.Book
 import com.hc.problem_timer_2.repository.BookRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -15,8 +14,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class BookListViewModel @Inject constructor(private val bookRepository: BookRepository): ViewModel() {
-    private val _bookList = MutableLiveData(listOf<BookVO>())
-    val bookList: LiveData<List<BookVO>> get() = _bookList
+    private val _bookList = MutableLiveData(listOf<Book>())
+    val bookList: LiveData<List<Book>> get() = _bookList
 
     fun getBookListFromLocalDB() {
         viewModelScope.launch {
@@ -36,7 +35,7 @@ class BookListViewModel @Inject constructor(private val bookRepository: BookRepo
         }
     }
 
-    fun updateBook(book: BookVO) {
+    fun updateBook(book: Book) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 bookRepository.update(book)

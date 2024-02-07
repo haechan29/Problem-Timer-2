@@ -3,16 +3,11 @@ package com.hc.problem_timer_2.viewmodel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.hc.problem_timer_2.data_class.BookVO
-import com.hc.problem_timer_2.data_class.Problem
+import com.hc.problem_timer_2.vo.Book
+import com.hc.problem_timer_2.vo.Problem
 import com.hc.problem_timer_2.repository.BookRepository
 import com.hc.problem_timer_2.util.updated
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import timber.log.Timber
 import javax.inject.Inject
 import kotlin.IndexOutOfBoundsException
 
@@ -21,7 +16,7 @@ class BookInfoViewModel @Inject constructor(private val bookRepository: BookRepo
     private val _bookInfo = MutableLiveData<BookInfo>()
     val bookInfo: LiveData<BookInfo> get() = _bookInfo
 
-    fun setBook(bookVO: BookVO) { _bookInfo.value = BookInfo(bookVO = bookVO, currentPage = bookVO.getFirstPage()) }
+    fun setBook(book: Book) { _bookInfo.value = BookInfo(book = book, currentPage = book.getFirstPage()) }
     fun setCurrentPage(page: Int) { _bookInfo.value = withBookInfoNotNull { it.copy(currentPage = page) } }
     fun isProblemNumberDuplicated(number: String) = withBookInfoNotNull { number in it.getProblemsOnCurrentPage().map { it.number } }
 
@@ -32,7 +27,7 @@ class BookInfoViewModel @Inject constructor(private val bookRepository: BookRepo
             val index = problems.indexOf(problem)
             val newProblems = problems.updated(index, problem.copy(number = newNumber))
             val newBook = bookInfo.getBook().copy(problems = newProblems)
-            bookInfo.copy(bookVO = newBook)
+            bookInfo.copy(book = newBook)
         }
     }
 
@@ -42,9 +37,9 @@ class BookInfoViewModel @Inject constructor(private val bookRepository: BookRepo
     }
 }
 
-data class BookInfo(private val bookVO: BookVO, private val currentPage: Int) {
-    fun getBook() = bookVO
+data class BookInfo(private val book: Book, private val currentPage: Int) {
+    fun getBook() = book
     fun getCurrentPage() = currentPage
-    fun getProblemsOnCurrentPage() = bookVO.problems.filter { problem -> problem.page == currentPage }
-    fun getPages() = bookVO.problems.map { problem -> problem.page }.distinct()
+    fun getProblemsOnCurrentPage() = book.problems.filter { problem -> problem.page == currentPage }
+    fun getPages() = book.problems.map { problem -> problem.page }.distinct()
 }

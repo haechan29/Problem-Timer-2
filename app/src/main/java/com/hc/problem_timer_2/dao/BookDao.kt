@@ -6,21 +6,21 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
-import com.hc.problem_timer_2.entity.Book
+import com.hc.problem_timer_2.dto.BookDto
 
 @Dao
 interface BookDao {
     @Query("SELECT * FROM book")
-    suspend fun getBooks(): List<Book>
+    suspend fun getAll(): List<BookDto>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insert(book: Book)
+    suspend fun insert(bookDto: BookDto)
 
     @Update
-    suspend fun update(book: Book)
+    suspend fun update(bookDto: BookDto)
 
     @Delete
-    suspend fun delete(book: Book)
+    suspend fun delete(bookDto: BookDto)
 
     @Query("DELETE FROM book WHERE id = :id")
     suspend fun deleteById(id: Long)

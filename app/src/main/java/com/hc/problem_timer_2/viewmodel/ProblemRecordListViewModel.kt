@@ -3,9 +3,9 @@ package com.hc.problem_timer_2.viewmodel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.hc.problem_timer_2.data_class.ProblemRecord
-import com.hc.problem_timer_2.data_class.Correct
-import com.hc.problem_timer_2.data_class.Wrong
+import com.hc.problem_timer_2.vo.ProblemRecord
+import com.hc.problem_timer_2.vo.Correct
+import com.hc.problem_timer_2.vo.Wrong
 import com.hc.problem_timer_2.util.added
 import com.hc.problem_timer_2.util.removed
 import java.time.LocalDateTime

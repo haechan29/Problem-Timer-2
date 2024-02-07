@@ -1,13 +1,12 @@
 package com.hc.problem_timer_2.repository
 
-import com.hc.problem_timer_2.data_class.BookVO
-import com.hc.problem_timer_2.data_class.Problem
-import com.hc.problem_timer_2.entity.Book
+import com.hc.problem_timer_2.vo.Book
+import com.hc.problem_timer_2.vo.Problem
 
 interface BookRepository {
-    suspend fun getBooks(): List<BookVO>
+    suspend fun getBooks(): List<Book>
     suspend fun insert(name: String, problems: List<Problem> = getDefaultProblems())
-    suspend fun update(bookVO: BookVO)
+    suspend fun update(book: Book)
     suspend fun deleteById(id: Long)
 }
 

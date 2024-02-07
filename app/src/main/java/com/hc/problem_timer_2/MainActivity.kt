@@ -110,12 +110,12 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import androidx.compose.ui.text.font.lerp
 import androidx.compose.ui.text.input.ImeAction
-import com.hc.problem_timer_2.data_class.BookVO
-import com.hc.problem_timer_2.data_class.Problem
-import com.hc.problem_timer_2.data_class.ProblemRecord
+import com.hc.problem_timer_2.vo.Book
+import com.hc.problem_timer_2.vo.Problem
+import com.hc.problem_timer_2.vo.ProblemRecord
 import com.hc.problem_timer_2.ui.theme.BackgroundGrey
-import com.hc.problem_timer_2.data_class.Grade
-import com.hc.problem_timer_2.data_class.Unranked
+import com.hc.problem_timer_2.vo.Grade
+import com.hc.problem_timer_2.vo.Unranked
 import com.hc.problem_timer_2.util.customToast
 import com.hc.problem_timer_2.viewmodel.BookInfoViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -221,7 +221,7 @@ fun BookTab(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BookButton(
-    book: BookVO,
+    book: Book,
     isSelected: Boolean,
     setSelectedItemIndex: (Long) -> Unit,
     isShowingDeleteBookBtn: Boolean,

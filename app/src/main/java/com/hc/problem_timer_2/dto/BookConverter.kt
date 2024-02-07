@@ -1,9 +1,9 @@
-package com.hc.problem_timer_2.entity
+package com.hc.problem_timer_2.dto
 
 import androidx.room.TypeConverter
 import com.google.gson.Gson
-import com.hc.problem_timer_2.data_class.BookVO
-import com.hc.problem_timer_2.data_class.Problem
+import com.hc.problem_timer_2.vo.Book
+import com.hc.problem_timer_2.vo.Problem
 
 class BookConverter {
     @TypeConverter
@@ -17,5 +17,5 @@ class BookConverter {
     }
 }
 
-fun Book.toVO() = BookVO(id = id, name = name, problems = problems)
-fun BookVO.toDto() = Book(id = id, name = name, problems = problems)
+fun BookDto.toVO() = Book(id = id, name = name, problems = problems)
+fun Book.toDto() = BookDto(id = id, name = name, problems = problems)

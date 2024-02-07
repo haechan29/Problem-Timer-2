@@ -1,4 +1,4 @@
-package com.hc.problem_timer_2.data_class
+package com.hc.problem_timer_2.vo
 
 import java.time.LocalDateTime
 

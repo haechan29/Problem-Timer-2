@@ -11,12 +11,8 @@ import timber.log.Timber
 import javax.inject.Inject
 
 class BookRepositoryImpl @Inject constructor(private val bookDao: BookDao): BookRepository {
-    override suspend fun getBooks() = bookDao.getAll().map { it.toVO() }
-    override suspend fun insert(name: String, problems: List<Problem>) =
-        bookDao.insert(BookDto(name = name, problems = problems))
-    override suspend fun update(book: Book) {
-        Timber.d("bookDto: ${book.toDto()}")
-        return bookDao.update(book.toDto())
-    }
+    override suspend fun getAll() = bookDao.getAll().map { it.toVO() }
+    override suspend fun insert(book: Book) = bookDao.insert(book.toDto())
+    override suspend fun update(book: Book) = bookDao.update(book.toDto())
     override suspend fun deleteById(id: Long) = bookDao.deleteById(id)
 }

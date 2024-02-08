@@ -5,6 +5,9 @@ import android.content.res.Resources
 import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlin.math.roundToInt
 
 @Composable
@@ -18,3 +21,5 @@ fun <E> List<E>.added(e: E) = this.copy().apply { add(e) }
 fun <E> List<E>.removed(e: E) = this.copy().apply { remove(e) }
 fun <E> List<E>.updated(index: Int, e: E) = this.copy().apply { set(index, e) }
 fun <E> List<E>.copy() = mutableListOf<E>().apply { addAll(this@copy) }
+
+fun getNow() = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())

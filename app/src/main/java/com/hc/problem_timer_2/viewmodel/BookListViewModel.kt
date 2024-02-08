@@ -20,34 +20,28 @@ class BookListViewModel @Inject constructor(private val bookRepository: BookRepo
     fun getBookListFromLocalDB() {
         viewModelScope.launch {
             val books = withContext(Dispatchers.IO) {
-                bookRepository.getBooks()
+                bookRepository.getAll()
             }
             _bookList.value = books
         }
     }
 
-    fun addBook(name: String) {
-        viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                bookRepository.insert(name = name)
-            }
-            getBookListFromLocalDB()
-        }
+    fun addBook(book: Book) = doIOAndGetBookListFromLocalDB {
+        bookRepository.insert(book)
     }
 
-    fun updateBook(book: Book) {
-        viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                bookRepository.update(book)
-            }
-            getBookListFromLocalDB()
-        }
+    fun updateBook(book: Book) = doIOAndGetBookListFromLocalDB {
+        bookRepository.update(book)
     }
 
-    fun deleteBook(id: Long) {
+    fun deleteBook(id: Long) = doIOAndGetBookListFromLocalDB {
+        bookRepository.deleteById(id)
+    }
+    
+    private fun doIOAndGetBookListFromLocalDB(f: suspend () -> Unit) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                bookRepository.deleteById(id)
+                f()
             }
             getBookListFromLocalDB()
         }

@@ -4,9 +4,6 @@ import android.content.Context
 import androidx.room.Room
 import com.hc.problem_timer_2.dao.BookDao
 import com.hc.problem_timer_2.datasource.BookDB
-import com.hc.problem_timer_2.repository.BookRepository
-import com.hc.problem_timer_2.repository_impl.BookRepositoryImpl
-import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -16,7 +13,7 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-class BookModule {
+class BookDBModule {
     @Provides
     @Singleton
     fun provideBookDB(@ApplicationContext context: Context): BookDB {
@@ -24,7 +21,9 @@ class BookModule {
             context.applicationContext,
             BookDB::class.java,
             "book database"
-        ).build()
+        )
+            .fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides

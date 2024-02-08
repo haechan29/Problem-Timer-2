@@ -1,9 +1,10 @@
 package com.hc.problem_timer_2.vo
 
-import java.time.LocalDateTime
+import kotlinx.datetime.LocalDateTime
 
 data class ProblemRecord(
-    val number: String,
+    val id: Long = 0L,
+    val bookId: Long,
     val timeRecord: Int,
     val grade: Grade,
     val solvedAt: LocalDateTime

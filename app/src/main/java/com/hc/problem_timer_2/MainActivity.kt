@@ -106,8 +106,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import androidx.compose.ui.text.font.lerp
 import androidx.compose.ui.text.input.ImeAction
 import com.hc.problem_timer_2.vo.Book
@@ -115,12 +113,11 @@ import com.hc.problem_timer_2.vo.Problem
 import com.hc.problem_timer_2.vo.ProblemRecord
 import com.hc.problem_timer_2.ui.theme.BackgroundGrey
 import com.hc.problem_timer_2.vo.Grade
-import com.hc.problem_timer_2.vo.Unranked
+import com.hc.problem_timer_2.vo.Grade.*
 import com.hc.problem_timer_2.util.customToast
+import com.hc.problem_timer_2.util.getNow
 import com.hc.problem_timer_2.viewmodel.BookInfoViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import java.lang.IndexOutOfBoundsException
-import java.time.LocalDateTime
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -169,7 +166,6 @@ fun BookTab(
     isShowingAddBookDialog: () -> Unit
 ) {
     val books by bookListViewModel.bookList.observeAsState()
-    Timber.d("current books: $books")
     var selectedItemId by remember { mutableStateOf<Long?>(null) }
     var isShowingDeleteBookBtn by remember { mutableStateOf(false) }
 
@@ -503,7 +499,7 @@ fun AddBookDialog(
                 ),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = {
-                    bookListViewModel.addBook(bookName)
+                    bookListViewModel.addBook(Book(name = bookName))
                     hideDialog()
                 }),
             )
@@ -513,7 +509,7 @@ fun AddBookDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    bookListViewModel.addBook(bookName)
+                    bookListViewModel.addBook(Book(name = bookName))
                     hideDialog()
                 }
             ) {
@@ -546,6 +542,7 @@ fun ColumnScope.ProblemListTab(
     val bookInfo by bookInfoViewModel.bookInfo.observeAsState()
     val problems = bookInfo?.getProblemsOnCurrentPage()
     val problemRecordList by problemRecordListViewModel.problemRecordList.observeAsState()
+    val problemRecordListMap2 = getProblemRecordListMapOnCurrentPage(problemRecordList!!)
     val problemRecordListMap = toProblemRecordListMap(problemRecordList!!)
 
     Box(
@@ -567,7 +564,8 @@ fun ColumnScope.ProblemListTab(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 items(items = problems!!) { problem ->
-                    val problemRecords = problemRecordListMap[problem.number]
+                    val problemRecords = problemRecordListMap[bookInfo!!.getBook().id]
+                    Timber.d("[Main] problemRecords: ${problemRecords!!.toList()}")
                     var color by remember { mutableStateOf(BackgroundGrey) }
                     Card(
                         modifier = Modifier
@@ -712,6 +710,7 @@ fun RowScope.ProblemTimberTab(
     isGradeMode: Boolean,
     setColor: (Color) -> Unit,
     context: Context = LocalContext.current,
+    bookInfoViewModel: BookInfoViewModel = viewModel(),
     problemRecordListViewModel: ProblemRecordListViewModel = viewModel()
 ) {
     var isTimerRunning by remember { mutableStateOf(false) }
@@ -727,13 +726,14 @@ fun RowScope.ProblemTimberTab(
     }
     LaunchedEffect(key1 = isGradeMode) {
         isTimerRunning = false
-        if (!isGradeMode && !shouldWaitToRecordAgain(recentProblemRecord) && currentGrade !is Unranked) {
+        // 채점 완료했을 때 문제 기록을 저장한다
+        if (!isGradeMode && !shouldWaitToRecordAgain(recentProblemRecord) && currentGrade == Unranked) {
             problemRecordListViewModel.addProblemRecord(
                 ProblemRecord(
-                    problem.number,
-                    currentTimeRecord,
-                    currentGrade,
-                    LocalDateTime.now()
+                    bookId = bookInfoViewModel.bookInfo.value!!.getBook().id,
+                    timeRecord = currentTimeRecord,
+                    grade = currentGrade,
+                    solvedAt = getNow()
                 )
             )
         }
@@ -776,7 +776,7 @@ fun RowScope.ProblemTimberTab(
                 modifier = Modifier
                     .fillMaxWidth()
                     .wrapContentHeight(),
-                text = if (currentGrade is Unranked) "탭해서 채점하기" else currentGrade.text,
+                text = if (currentGrade == Unranked) "탭해서 채점하기" else currentGrade.text,
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center
             )
@@ -834,7 +834,7 @@ fun ProblemRecordListTab(problemRecords: MutableList<ProblemRecord>?) {
                     modifier = Modifier
                         .weight(1f)
                         .wrapContentHeight(),
-                    text = problemRecord.solvedAt.format(DateTimeFormatter.ofPattern("MM/dd")),
+                    text = with (problemRecord.solvedAt) { "$month/$date" },
                     textAlign = TextAlign.Center
                 )
                 Text(
@@ -876,6 +876,10 @@ fun setPage(pageString: String, bookInfoViewModel: BookInfoViewModel, pages: Lis
         alert()
     }
 
+fun getProblemRecordListMapOnCurrentPage(problemRecordList: List<ProblemRecord>): List<ProblemRecord> {
+    return emptyList()
+}
+
 fun notifyPageOutOfRange(context: Context, pages: List<Int>)
         = customToast("${pages.first()}과 ${pages.last()} 사이의 값을 입력해주세요", context)
 
@@ -897,10 +901,10 @@ fun toSimpleTimeFormat(timeRecord: Int): String {
 }
 
 fun toProblemRecordListMap(problemRecordList: List<ProblemRecord>) = problemRecordList
-    .fold(mutableMapOf<String, SnapshotStateList<ProblemRecord>>()) { map, problemRecord ->
-        val problemRecordsWithTheNumber = map[problemRecord.number] ?: mutableListOf()
-        map[problemRecord.number] =
-            problemRecordsWithTheNumber
+    .fold(mutableMapOf<Long, SnapshotStateList<ProblemRecord>>()) { map, problemRecord ->
+        val problemRecordsWithBookId = map[problemRecord.bookId] ?: mutableListOf()
+        map[problemRecord.bookId] =
+            problemRecordsWithBookId
                 .added(problemRecord)
                 .sortedByDescending { it.solvedAt }
                 .take(3)
@@ -909,4 +913,4 @@ fun toProblemRecordListMap(problemRecordList: List<ProblemRecord>) = problemReco
     }
 
 fun shouldWaitToRecordAgain(recentProblemRecord: ProblemRecord?) =
-    recentProblemRecord != null && recentProblemRecord.solvedAt.toLocalDate().isEqual(LocalDate.now())
+    recentProblemRecord != null && recentProblemRecord.solvedAt.date == getNow().date

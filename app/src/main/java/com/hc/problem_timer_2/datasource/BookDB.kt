@@ -1,5 +1,6 @@
 package com.hc.problem_timer_2.datasource
 
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters

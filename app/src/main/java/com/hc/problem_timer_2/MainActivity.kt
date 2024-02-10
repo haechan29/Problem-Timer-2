@@ -863,10 +863,7 @@ fun ProblemRecordListTab(problemRecords: List<ProblemRecord>?) {
 
 fun ComponentActivity.getDataFromViewModels() {
     val bookListViewModel: BookListViewModel by viewModels()
-    val problemRecordListViewModel: ProblemRecordListViewModel by viewModels()
-
     bookListViewModel.getBookListFromLocalDB()
-    problemRecordListViewModel.getProblemRecordsFromLocalDB()
 }
 
 fun setPage(pageString: String, bookInfoViewModel: BookInfoViewModel, pages: List<Int>, alert: () -> Unit) =

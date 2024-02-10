@@ -15,19 +15,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ProblemRecordListViewModel @Inject constructor(private val problemRecordRepository: ProblemRecordRepository): ViewModel() {
-    private val _problemRecordList = MutableLiveData(listOf<ProblemRecord>())
-
     private val _problemRecordListOnSelectedPage = MutableLiveData(listOf<ProblemRecord>())
     val problemRecordListOnSelectedPage: LiveData<List<ProblemRecord>> get() = _problemRecordListOnSelectedPage
-
-    fun getProblemRecordsFromLocalDB() {
-        viewModelScope.launch {
-            val problemRecords = withContext(Dispatchers.IO) {
-                problemRecordRepository.getAll()
-            }
-            _problemRecordList.value = problemRecords
-        }
-    }
 
     fun getProblemRecords(bookId: Long, page: Int) {
         viewModelScope.launch {
@@ -40,19 +29,18 @@ class ProblemRecordListViewModel @Inject constructor(private val problemRecordRe
         }
     }
 
-    fun addProblemRecord(problemRecord: ProblemRecord) {
-        viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                problemRecordRepository.insert(problemRecord)
-            }
-            getProblemRecords(problemRecord.bookId, problemRecord.page)
-        }
+    fun addProblemRecord(problemRecord: ProblemRecord) = doIOAndGetBookList(problemRecord) {
+        problemRecordRepository.insert(problemRecord)
     }
 
-    fun removeProblemRecord(problemRecord: ProblemRecord) {
+    fun removeProblemRecord(problemRecord: ProblemRecord) = doIOAndGetBookList(problemRecord) {
+        problemRecordRepository.deleteById(problemRecord.id)
+    }
+
+    private fun doIOAndGetBookList(problemRecord: ProblemRecord, f: suspend () -> Unit) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                problemRecordRepository.deleteById(problemRecord.id)
+                f()
             }
             getProblemRecords(problemRecord.bookId, problemRecord.page)
         }

@@ -296,12 +296,12 @@ fun PageTab(
     listState: LazyListState = rememberLazyListState()
 ) {
     val bookInfo by bookInfoViewModel.bookInfo.observeAsState()
-    val pages = bookInfo?.getPages()
-    val currentPage = bookInfo?.getCurrentPage()
+    val pages = bookInfo?.selectedBook?.getPages()
+    val selectedPage = bookInfo?.selectedPage
 
-    LaunchedEffect(key1 = currentPage) {
-        if (currentPage == null) return@LaunchedEffect
-        val index = pages!!.indexOf(currentPage)
+    LaunchedEffect(key1 = selectedPage) {
+        if (selectedPage == null) return@LaunchedEffect
+        val index = pages!!.indexOf(selectedPage)
         scope.launch { listState.animateScrollToItem(index) }
     }
 
@@ -316,9 +316,9 @@ fun PageTab(
                 customToast(context.getString(R.string.select_book), context)
                 return@PageButton
             }
-            val index = pages!!.indexOf(currentPage)
+            val index = pages!!.indexOf(selectedPage)
             if (index < 0) return@PageButton
-            setPage((currentPage!! - 1).toString(), bookInfoViewModel, pages) {
+            setPage((selectedPage!! - 1).toString(), bookInfoViewModel, pages) {
                 notifyPageOutOfRange(context, pages)
             }
         }
@@ -328,9 +328,9 @@ fun PageTab(
                 customToast(context.getString(R.string.select_book), context)
                 return@PageButton
             }
-            val index = pages!!.indexOf(currentPage)
+            val index = pages!!.indexOf(selectedPage)
             if (index < 0) return@PageButton
-            setPage((currentPage!! + 1).toString(), bookInfoViewModel, pages) {
+            setPage((selectedPage!! + 1).toString(), bookInfoViewModel, pages) {
                 notifyPageOutOfRange(context, pages)
             }
         }
@@ -540,9 +540,14 @@ fun ColumnScope.ProblemListTab(
     context: Context = LocalContext.current
 ) {
     val bookInfo by bookInfoViewModel.bookInfo.observeAsState()
-    val problems = bookInfo?.getProblemsOnCurrentPage()
-    val problemRecordList by problemRecordListViewModel.problemRecordList.observeAsState()
-    val problemRecordListMap = toProblemRecordListMap(problemRecordList!!)
+    val problems = bookInfo?.getProblemsOnSelectedPage()
+
+    if (bookInfo != null) {
+        with(bookInfo!!) { problemRecordListViewModel.getProblemRecords(selectedBook.id, selectedPage) }
+    }
+
+    val problemRecordList by problemRecordListViewModel.problemRecordListOnSelectedPage.observeAsState()
+    val problemRecordListMap = problemRecordList!!.toProblemRecordListMap()
 
     Box(
         modifier = Modifier
@@ -562,8 +567,8 @@ fun ColumnScope.ProblemListTab(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                items(items = problems!!) { problem ->
-                    val problemRecords = problemRecordListMap[bookInfo!!.getBook().id]
+                items(items = problems) { problem ->
+                    val problemRecords = problemRecordListMap[problem.number]
                     var color by remember { mutableStateOf(BackgroundGrey) }
                     Card(
                         modifier = Modifier
@@ -679,7 +684,7 @@ fun ProblemNumberTab(
                     problemNumberInput = problem.number
                 } else {
                     bookInfoViewModel.updateProblemNumber(problem, problemNumberInput)
-                    val book = bookInfoViewModel.bookInfo.value!!.getBook()
+                    val book = bookInfoViewModel.bookInfo.value!!.selectedBook
                     bookListViewModel.updateBook(book)
                 }
                 focusManager.clearFocus()
@@ -725,10 +730,11 @@ fun RowScope.ProblemTimberTab(
     LaunchedEffect(key1 = isGradeMode) {
         isTimerRunning = false
         // 채점 완료했을 때 문제 기록을 저장한다
-        if (!isGradeMode && !shouldWaitToRecordAgain(recentProblemRecord) && currentGrade == Unranked) {
+        if (!isGradeMode && !shouldWaitToRecordAgain(recentProblemRecord) && currentGrade != Unranked) {
             problemRecordListViewModel.addProblemRecord(
                 ProblemRecord(
-                    bookId = bookInfoViewModel.bookInfo.value!!.getBook().id,
+                    bookId = bookInfoViewModel.bookInfo.value!!.selectedBook.id,
+                    page = problem.page,
                     number = problem.number,
                     timeRecord = currentTimeRecord,
                     grade = currentGrade,
@@ -803,7 +809,7 @@ fun ViewMoreButton(isVisible: Boolean, toggleVisibility: () -> Unit) {
 }
 
 @Composable
-fun ProblemRecordListTab(problemRecords: MutableList<ProblemRecord>?) {
+fun ProblemRecordListTab(problemRecords: List<ProblemRecord>?) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -833,7 +839,7 @@ fun ProblemRecordListTab(problemRecords: MutableList<ProblemRecord>?) {
                     modifier = Modifier
                         .weight(1f)
                         .wrapContentHeight(),
-                    text = with (problemRecord.solvedAt) { "$month/$date" },
+                    text = with (problemRecord.solvedAt) { "$monthNumber/$dayOfMonth" },
                     textAlign = TextAlign.Center
                 )
                 Text(
@@ -878,6 +884,18 @@ fun setPage(pageString: String, bookInfoViewModel: BookInfoViewModel, pages: Lis
 fun notifyPageOutOfRange(context: Context, pages: List<Int>)
         = customToast("${pages.first()}과 ${pages.last()} 사이의 값을 입력해주세요", context)
 
+fun List<ProblemRecord>.toProblemRecordListMap() =
+    fold(mutableMapOf<String, List<ProblemRecord>>()) { map, problemRecord ->
+        val problemRecordsOfTheNumber = map[problemRecord.number] ?: mutableListOf()
+        map[problemRecord.number] =
+            problemRecordsOfTheNumber
+                .added(problemRecord)
+                .sortedByDescending { it.solvedAt }
+                .take(3)
+                .toMutableList()
+        map
+    }
+
 fun toTimeFormat(timeRecord: Int): String {
     val ms = (timeRecord / 100) % 10
     val s = (timeRecord / 1_000) % 60
@@ -894,18 +912,6 @@ fun toSimpleTimeFormat(timeRecord: Int): String {
     sb.append("${s}초")
     return sb.toString()
 }
-
-fun toProblemRecordListMap(problemRecordList: List<ProblemRecord>) = problemRecordList
-    .fold(mutableMapOf<Long, SnapshotStateList<ProblemRecord>>()) { map, problemRecord ->
-        val problemRecordsWithTheNumber = map[problemRecord.bookId] ?: mutableListOf()
-        map[problemRecord.bookId] =
-            problemRecordsWithTheNumber
-                .added(problemRecord)
-                .sortedByDescending { it.solvedAt }
-                .take(3)
-                .toMutableStateList()
-        map
-    }
 
 fun shouldWaitToRecordAgain(recentProblemRecord: ProblemRecord?) =
     recentProblemRecord != null && recentProblemRecord.solvedAt.date == getNow().date

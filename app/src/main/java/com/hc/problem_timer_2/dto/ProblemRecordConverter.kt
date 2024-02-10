@@ -22,6 +22,7 @@ class ProblemRecordConverter {
 fun ProblemRecordDto.toVO() = ProblemRecord(
     id = id,
     bookId = bookId,
+    page = page,
     number = number,
     timeRecord = timeRecord,
     grade = grade,
@@ -31,6 +32,7 @@ fun ProblemRecordDto.toVO() = ProblemRecord(
 fun ProblemRecord.toDto() = ProblemRecordDto(
     id = id,
     bookId = bookId,
+    page = page,
     number = number,
     timeRecord = timeRecord,
     grade = grade,

@@ -11,7 +11,7 @@ import com.hc.problem_timer_2.dto.BookConverter
 import com.hc.problem_timer_2.dto.ProblemRecordConverter
 import com.hc.problem_timer_2.dto.ProblemRecordDto
 
-@Database(entities = [ProblemRecordDto::class], version = 2)
+@Database(entities = [ProblemRecordDto::class], version = 3)
 @TypeConverters(ProblemRecordConverter::class)
 abstract class ProblemRecordDB : RoomDatabase() {
     abstract fun problemRecordDao(): ProblemRecordDao

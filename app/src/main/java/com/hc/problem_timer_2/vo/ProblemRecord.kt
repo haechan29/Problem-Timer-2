@@ -5,6 +5,7 @@ import kotlinx.datetime.LocalDateTime
 data class ProblemRecord(
     val id: Long = 0L,
     val bookId: Long,
+    val page: Int,
     val number: String,
     val timeRecord: Int,
     val grade: Grade,

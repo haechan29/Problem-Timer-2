@@ -2,6 +2,7 @@ package com.hc.problem_timer_2.vo
 
 data class Book(val id: Long = 0L, val name: String, var problems: List<Problem> = getDefaultProblems()) {
     fun getFirstPage() = problems[0].page
+    fun getPages() = problems.map { problem -> problem.page }.distinct()
 }
 
 fun getDefaultProblems() = (1 .. 100).map { page ->

@@ -6,11 +6,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hc.problem_timer_2.repository.ProblemRecordRepository
 import com.hc.problem_timer_2.vo.ProblemRecord
-import kotlinx.datetime.LocalDateTime
-import com.hc.problem_timer_2.util.added
-import com.hc.problem_timer_2.util.getNow
-import com.hc.problem_timer_2.util.removed
-import com.hc.problem_timer_2.vo.Grade
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -21,7 +16,9 @@ import javax.inject.Inject
 @HiltViewModel
 class ProblemRecordListViewModel @Inject constructor(private val problemRecordRepository: ProblemRecordRepository): ViewModel() {
     private val _problemRecordList = MutableLiveData(listOf<ProblemRecord>())
-    val problemRecordList: LiveData<List<ProblemRecord>> get() = _problemRecordList
+
+    private val _problemRecordListOnSelectedPage = MutableLiveData(listOf<ProblemRecord>())
+    val problemRecordListOnSelectedPage: LiveData<List<ProblemRecord>> get() = _problemRecordListOnSelectedPage
 
     fun getProblemRecordsFromLocalDB() {
         viewModelScope.launch {
@@ -32,21 +29,32 @@ class ProblemRecordListViewModel @Inject constructor(private val problemRecordRe
         }
     }
 
+    fun getProblemRecords(bookId: Long, page: Int) {
+        viewModelScope.launch {
+            _problemRecordListOnSelectedPage.value =
+                withContext(Dispatchers.IO) {
+                    problemRecordRepository
+                        .getByBookId(bookId)
+                        .filter { it.page == page }
+                }
+        }
+    }
+
     fun addProblemRecord(problemRecord: ProblemRecord) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 problemRecordRepository.insert(problemRecord)
             }
-            getProblemRecordsFromLocalDB()
+            getProblemRecords(problemRecord.bookId, problemRecord.page)
         }
     }
 
-    fun removeProblemRecord(id: Long) {
+    fun removeProblemRecord(problemRecord: ProblemRecord) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                problemRecordRepository.deleteById(id)
+                problemRecordRepository.deleteById(problemRecord.id)
             }
-            getProblemRecordsFromLocalDB()
+            getProblemRecords(problemRecord.bookId, problemRecord.page)
         }
     }
 }

@@ -6,13 +6,14 @@ import androidx.lifecycle.ViewModel
 import com.hc.problem_timer_2.vo.Book
 import com.hc.problem_timer_2.vo.Problem
 import com.hc.problem_timer_2.repository.BookRepository
+import com.hc.problem_timer_2.repository.ProblemRecordRepository
 import com.hc.problem_timer_2.util.updated
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlin.IndexOutOfBoundsException
 
 @HiltViewModel
-class BookInfoViewModel @Inject constructor(private val bookRepository: BookRepository): ViewModel() {
+class BookInfoViewModel @Inject constructor(private val problemRecordRepository: ProblemRecordRepository): ViewModel() {
     private val _bookInfo = MutableLiveData<BookInfo>()
     val bookInfo: LiveData<BookInfo> get() = _bookInfo
 

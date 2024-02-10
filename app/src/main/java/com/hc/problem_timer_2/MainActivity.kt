@@ -542,7 +542,6 @@ fun ColumnScope.ProblemListTab(
     val bookInfo by bookInfoViewModel.bookInfo.observeAsState()
     val problems = bookInfo?.getProblemsOnCurrentPage()
     val problemRecordList by problemRecordListViewModel.problemRecordList.observeAsState()
-    val problemRecordListMap2 = getProblemRecordListMapOnCurrentPage(problemRecordList!!)
     val problemRecordListMap = toProblemRecordListMap(problemRecordList!!)
 
     Box(
@@ -565,7 +564,6 @@ fun ColumnScope.ProblemListTab(
             ) {
                 items(items = problems!!) { problem ->
                     val problemRecords = problemRecordListMap[bookInfo!!.getBook().id]
-                    Timber.d("[Main] problemRecords: ${problemRecords!!.toList()}")
                     var color by remember { mutableStateOf(BackgroundGrey) }
                     Card(
                         modifier = Modifier
@@ -731,6 +729,7 @@ fun RowScope.ProblemTimberTab(
             problemRecordListViewModel.addProblemRecord(
                 ProblemRecord(
                     bookId = bookInfoViewModel.bookInfo.value!!.getBook().id,
+                    number = problem.number,
                     timeRecord = currentTimeRecord,
                     grade = currentGrade,
                     solvedAt = getNow()
@@ -876,10 +875,6 @@ fun setPage(pageString: String, bookInfoViewModel: BookInfoViewModel, pages: Lis
         alert()
     }
 
-fun getProblemRecordListMapOnCurrentPage(problemRecordList: List<ProblemRecord>): List<ProblemRecord> {
-    return emptyList()
-}
-
 fun notifyPageOutOfRange(context: Context, pages: List<Int>)
         = customToast("${pages.first()}과 ${pages.last()} 사이의 값을 입력해주세요", context)
 
@@ -902,9 +897,9 @@ fun toSimpleTimeFormat(timeRecord: Int): String {
 
 fun toProblemRecordListMap(problemRecordList: List<ProblemRecord>) = problemRecordList
     .fold(mutableMapOf<Long, SnapshotStateList<ProblemRecord>>()) { map, problemRecord ->
-        val problemRecordsWithBookId = map[problemRecord.bookId] ?: mutableListOf()
+        val problemRecordsWithTheNumber = map[problemRecord.bookId] ?: mutableListOf()
         map[problemRecord.bookId] =
-            problemRecordsWithBookId
+            problemRecordsWithTheNumber
                 .added(problemRecord)
                 .sortedByDescending { it.solvedAt }
                 .take(3)

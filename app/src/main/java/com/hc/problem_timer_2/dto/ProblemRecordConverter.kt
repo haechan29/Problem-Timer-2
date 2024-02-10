@@ -22,6 +22,7 @@ class ProblemRecordConverter {
 fun ProblemRecordDto.toVO() = ProblemRecord(
     id = id,
     bookId = bookId,
+    number = number,
     timeRecord = timeRecord,
     grade = grade,
     solvedAt = solvedAt.toLocalDateTime(TimeZone.currentSystemDefault())
@@ -30,6 +31,7 @@ fun ProblemRecordDto.toVO() = ProblemRecord(
 fun ProblemRecord.toDto() = ProblemRecordDto(
     id = id,
     bookId = bookId,
+    number = number,
     timeRecord = timeRecord,
     grade = grade,
     solvedAt = solvedAt.toInstant(TimeZone.currentSystemDefault())

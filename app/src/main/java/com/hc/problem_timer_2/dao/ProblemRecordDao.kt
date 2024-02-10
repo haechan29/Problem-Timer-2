@@ -14,6 +14,9 @@ interface ProblemRecordDao {
     @Query("SELECT * FROM problem_record")
     suspend fun getAll(): List<ProblemRecordDto>
 
+    @Query("SELECT * FROM problem_record WHERE book_id = :id")
+    suspend fun getByBookId(id: Long): List<ProblemRecordDto>
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(problemRecordDto: ProblemRecordDto)
 

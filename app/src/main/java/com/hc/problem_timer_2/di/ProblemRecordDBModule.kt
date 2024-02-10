@@ -23,7 +23,9 @@ class ProblemRecordDBModule {
             context.applicationContext,
             ProblemRecordDB::class.java,
             "problem record database"
-        ).build()
+        )
+            .fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides

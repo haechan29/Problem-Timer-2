@@ -2,10 +2,11 @@ package com.hc.problem_timer_2.di
 
 import android.content.Context
 import androidx.room.Room
-import com.hc.problem_timer_2.dao.BookDao
 import com.hc.problem_timer_2.dao.ProblemRecordDao
-import com.hc.problem_timer_2.datasource.BookDB
 import com.hc.problem_timer_2.datasource.ProblemRecordDB
+import com.hc.problem_timer_2.repository.ProblemRecordRepository
+import com.hc.problem_timer_2.repository_impl.ProblemRecordRepositoryImpl
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -33,4 +34,11 @@ class ProblemRecordDBModule {
     fun provideProblemRecordDao(problemRecordDB: ProblemRecordDB): ProblemRecordDao {
         return problemRecordDB.problemRecordDao()
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class ProblemRecordRepositoryModule {
+    @Binds
+    abstract fun bindProblemRecordRepository(problemRecordRepositoryImpl: ProblemRecordRepositoryImpl): ProblemRecordRepository
 }

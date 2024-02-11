@@ -3,10 +3,15 @@ package com.hc.problem_timer_2.dto
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import androidx.room.TypeConverter
 import com.hc.problem_timer_2.vo.Book
 import com.hc.problem_timer_2.vo.Grade
 import com.hc.problem_timer_2.vo.Problem
+import com.hc.problem_timer_2.vo.ProblemRecord
 import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
 
 @Entity(tableName = "problem_record")
 data class ProblemRecordDto(
@@ -19,5 +24,30 @@ data class ProblemRecordDto(
     @ColumnInfo(name = "solvedAt") val solvedAt: Instant
 )
 
-fun ProblemDto.toVO() = Problem(id = id, bookId = bookId, page = page, number = number)
-fun Problem.toDto() = ProblemDto(id = id, bookId = bookId, page = page, number = number)
+class ProblemRecordConverter {
+    @TypeConverter
+    fun toJson(instant: Instant) = instant.toString()
+
+    @TypeConverter
+    fun toProblemRecord(json: String) = Instant.parse(json)
+}
+
+fun ProblemRecordDto.toVO() = ProblemRecord(
+    id = id,
+    bookId = bookId,
+    page = page,
+    number = number,
+    timeRecord = timeRecord,
+    grade = grade,
+    solvedAt = solvedAt.toLocalDateTime(TimeZone.currentSystemDefault())
+)
+
+fun ProblemRecord.toDto() = ProblemRecordDto(
+    id = id,
+    bookId = bookId,
+    page = page,
+    number = number,
+    timeRecord = timeRecord,
+    grade = grade,
+    solvedAt = solvedAt.toInstant(TimeZone.currentSystemDefault())
+)

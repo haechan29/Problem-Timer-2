@@ -9,5 +9,5 @@ import com.hc.problem_timer_2.vo.Problem
 data class BookDto(
     @PrimaryKey(autoGenerate = true) val id: Long = 0L,
     @ColumnInfo(name = "name") val name: String,
-    @ColumnInfo(name = "problems") val problems: List<Problem>
+    @ColumnInfo(name = "problems") val problems: MutableList<Problem>
 )

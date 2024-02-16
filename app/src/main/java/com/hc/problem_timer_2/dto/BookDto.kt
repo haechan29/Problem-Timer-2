@@ -11,8 +11,7 @@ import com.hc.problem_timer_2.vo.Problem
 @Entity(tableName = "book")
 data class BookDto(
     @PrimaryKey(autoGenerate = true) val id: Long = 0L,
-    @ColumnInfo(name = "name") val name: String,
-    @ColumnInfo(name = "problems") val problems: MutableList<Problem>
+    @ColumnInfo(name = "name") val name: String
 )
 
 class BookConverter {
@@ -23,5 +22,5 @@ class BookConverter {
     fun toList(json: String): List<Problem>? = Gson().fromJson(json, Array<Problem>::class.java)?.toList()
 }
 
-fun BookDto.toVO() = Book(id = id, name = name, problems = problems)
-fun Book.toDto() = BookDto(id = id, name = name, problems = problems)
+fun BookDto.toVO() = Book(id = id, name = name)
+fun Book.toDto() = BookDto(id = id, name = name)

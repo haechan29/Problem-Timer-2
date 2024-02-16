@@ -18,31 +18,26 @@ class ProblemRecordListViewModel @Inject constructor(private val problemRecordRe
     private val _problemRecordListOnSelectedPage = MutableLiveData(listOf<ProblemRecord>())
     val problemRecordListOnSelectedPage: LiveData<List<ProblemRecord>> get() = _problemRecordListOnSelectedPage
 
-    fun getProblemRecords(bookId: Long, page: Int) {
+    fun getProblemRecords() {
         viewModelScope.launch {
-            _problemRecordListOnSelectedPage.value =
-                withContext(Dispatchers.IO) {
-                    problemRecordRepository
-                        .getByBookId(bookId)
-                        .filter { it.page == page }
-                }
+            _problemRecordListOnSelectedPage.value = withContext(Dispatchers.IO) { problemRecordRepository.getAll() }
         }
     }
 
-    fun addProblemRecord(problemRecord: ProblemRecord) = doIOAndGetBookList(problemRecord) {
+    fun addProblemRecord(problemRecord: ProblemRecord) = doIOAndGetBookList {
         problemRecordRepository.insert(problemRecord)
     }
 
-    fun removeProblemRecord(problemRecord: ProblemRecord) = doIOAndGetBookList(problemRecord) {
+    fun removeProblemRecord(problemRecord: ProblemRecord) = doIOAndGetBookList {
         problemRecordRepository.deleteById(problemRecord.id)
     }
 
-    private fun doIOAndGetBookList(problemRecord: ProblemRecord, f: suspend () -> Unit) {
+    private fun doIOAndGetBookList(f: suspend () -> Unit) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 f()
             }
-            getProblemRecords(problemRecord.bookId, problemRecord.page)
+            getProblemRecords()
         }
     }
 }

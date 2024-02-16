@@ -17,7 +17,7 @@ class BookListViewModel @Inject constructor(private val bookRepository: BookRepo
     private val _bookList = MutableLiveData(listOf<Book>())
     val bookList: LiveData<List<Book>> get() = _bookList
 
-    fun getBookListFromLocalDB() {
+    fun getBookList() {
         viewModelScope.launch {
             val books = withContext(Dispatchers.IO) {
                 bookRepository.getAll()
@@ -43,7 +43,7 @@ class BookListViewModel @Inject constructor(private val bookRepository: BookRepo
             withContext(Dispatchers.IO) {
                 f()
             }
-            getBookListFromLocalDB()
+            getBookList()
         }
     }
 }

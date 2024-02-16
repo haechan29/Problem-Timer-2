@@ -4,32 +4,18 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.hc.problem_timer_2.vo.Book
-import com.hc.problem_timer_2.vo.Problem
 import com.hc.problem_timer_2.repository.ProblemRecordRepository
-import com.hc.problem_timer_2.util.updated
 import dagger.hilt.android.lifecycle.HiltViewModel
+import timber.log.Timber
 import javax.inject.Inject
-import kotlin.IndexOutOfBoundsException
 
 @HiltViewModel
-class BookInfoViewModel @Inject constructor(private val problemRecordRepository: ProblemRecordRepository): ViewModel() {
-    private val _bookInfo = MutableLiveData<BookInfo>()
+class BookInfoViewModel @Inject constructor(): ViewModel() {
+    private val _bookInfo = MutableLiveData(BookInfo())
     val bookInfo: LiveData<BookInfo> get() = _bookInfo
 
-    fun setBook(book: Book) { _bookInfo.value = BookInfo(selectedBook = book, selectedPage = book.getFirstPage()) }
-    fun setCurrentPage(page: Int) { _bookInfo.value = withBookInfoNotNull { it.copy(selectedPage = page) } }
-    fun isProblemNumberDuplicated(number: String) = withBookInfoNotNull { number in it.getProblemsOnSelectedPage().map { it.number } }
-
-    fun updateProblemNumber(problem: Problem, newNumber: String) {
-        _bookInfo.value = withBookInfoNotNull { bookInfo ->
-            val problems = bookInfo.selectedBook.problems
-            if (problem !in problems) throw IndexOutOfBoundsException("problem out of problems")
-            val index = problems.indexOf(problem)
-            val newProblems = problems.updated(index, problem.copy(number = newNumber))
-            val newBook = bookInfo.selectedBook.copy(problems = newProblems)
-            bookInfo.copy(selectedBook = newBook)
-        }
-    }
+    fun setBook(book: Book) { _bookInfo.value = BookInfo(selectedBook = book, selectedPage = 1) }
+    fun setPage(page: Int) { _bookInfo.value = withBookInfoNotNull { it.copy(selectedPage = page) } }
 
     private fun <R> withBookInfoNotNull(f: (BookInfo) -> R): R {
         if (bookInfo.value == null) throw UninitializedPropertyAccessException("bookInfo not initialized")
@@ -37,6 +23,6 @@ class BookInfoViewModel @Inject constructor(private val problemRecordRepository:
     }
 }
 
-data class BookInfo(val selectedBook: Book, val selectedPage: Int) {
-    fun getProblemsOnSelectedPage() = selectedBook.problems.filter { problem -> problem.page == selectedPage }
+data class BookInfo(val selectedBook: Book? = null, val selectedPage: Int? = null) {
+    fun isBookSelected() = selectedBook != null
 }

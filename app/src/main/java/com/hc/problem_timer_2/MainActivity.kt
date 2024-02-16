@@ -152,9 +152,7 @@ fun TimerScreen() {
         Divider(thickness = 1.dp, color = Color.LightGray)
         PageAndGradeTab({ isGradeMode }, { value: Boolean -> isGradeMode = value })
         Divider(thickness = 1.dp, color = Color.LightGray)
-        if (isShowingAddBookDialog) {
-            AddBookDialog { isShowingAddBookDialog = false }
-        }
+        if (isShowingAddBookDialog) AddBookDialog { isShowingAddBookDialog = false }
         ProblemListTab({ isGradeMode })
     }
 }
@@ -688,6 +686,39 @@ fun ProblemNumberTab(
     problem: Problem,
     problemRecords: List<ProblemRecord>,
     isGradeMode: () -> Boolean,
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        ProblemNumberHeaderTab(problemRecords)
+        ProblemNumberBodyTab(problem, isGradeMode)
+        Spacer(modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+fun ColumnScope.ProblemNumberHeaderTab(problemRecords: List<ProblemRecord>) {
+    Box(
+        modifier = Modifier
+            .width(50.dp)
+            .weight(1f),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Row(modifier = Modifier.wrapContentSize()) {
+            problemRecords.reversed().forEach { problemRecord ->
+                Text(
+                    modifier = Modifier.wrapContentSize(),
+                    text = problemRecord.grade.text,
+                    textAlign = TextAlign.Center,
+                    fontSize = 10.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ProblemNumberBodyTab(
+    problem: Problem,
+    isGradeMode: () -> Boolean,
     focusManager: FocusManager = LocalFocusManager.current,
     context: Context = LocalContext.current,
     bookInfoViewModel: BookInfoViewModel = viewModel(),
@@ -695,61 +726,41 @@ fun ProblemNumberTab(
 ) {
     var isProblemNumberFocused by remember { mutableStateOf(false) }
     var problemNumberInput by remember { mutableStateOf("") }
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            modifier = Modifier
-                .width(50.dp)
-                .weight(1f),
-            contentAlignment = Alignment.BottomCenter
-        ) {
-            Row(modifier = Modifier.wrapContentSize()) {
-                problemRecords.reversed().forEach { problemRecord ->
-                    Text(
-                        modifier = Modifier.wrapContentSize(),
-                        text = problemRecord.grade.text,
-                        textAlign = TextAlign.Center,
-                        fontSize = 10.sp
-                    )
-                }
+    BasicTextField(
+        modifier = Modifier
+            .width(60.dp)
+            .onFocusChanged { isProblemNumberFocused = it.isFocused },
+        enabled = !isGradeMode(),
+        value = problemNumberInput,
+        onValueChange = { problemNumberInput = it },
+        textStyle = TextStyle(
+            fontSize = 14.sp,
+            textAlign = TextAlign.Center
+        ),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(onDone = {
+            if (problemListViewModel.isProblemNumberDuplicated(problemNumberInput)) {
+                customToast("문제 번호가 중복됩니다", context)
+                problemNumberInput = problem.number
+            } else {
+                val bookInfo = bookInfoViewModel.bookInfo.value!!
+                problemListViewModel.updateProblemNumber(problem, problemNumberInput, bookInfo.selectedBook!!.id)
             }
+            focusManager.clearFocus()
+            problemNumberInput = ""
+        }),
+        singleLine = true,
+        maxLines = 1,
+        decorationBox = { innerTextField ->
+            if (!isProblemNumberFocused) {
+                Text(
+                    modifier = Modifier.wrapContentSize(),
+                    text = problem.number
+                )
+            }
+            innerTextField()
         }
-        BasicTextField(
-            modifier = Modifier
-                .width(60.dp)
-                .onFocusChanged { isProblemNumberFocused = it.isFocused },
-            enabled = !isGradeMode(),
-            value = problemNumberInput,
-            onValueChange = { problemNumberInput = it },
-            textStyle = TextStyle(
-                fontSize = 14.sp,
-                textAlign = TextAlign.Center
-            ),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = {
-                if (problemListViewModel.isProblemNumberDuplicated(problemNumberInput)) {
-                    customToast("문제 번호가 중복됩니다", context)
-                    problemNumberInput = problem.number
-                } else {
-                    val bookInfo = bookInfoViewModel.bookInfo.value!!
-                    problemListViewModel.updateProblemNumber(problem, problemNumberInput, bookInfo.selectedBook!!.id)
-                }
-                focusManager.clearFocus()
-                problemNumberInput = ""
-            }),
-            singleLine = true,
-            maxLines = 1,
-            decorationBox = { innerTextField ->
-                if (!isProblemNumberFocused) {
-                    Text(
-                        modifier = Modifier.wrapContentSize(),
-                        text = problem.number
-                    )
-                }
-                innerTextField()
-            }
-        )
-        Spacer(modifier = Modifier.weight(1f))
-    }
+    )
 }
 
 @Composable

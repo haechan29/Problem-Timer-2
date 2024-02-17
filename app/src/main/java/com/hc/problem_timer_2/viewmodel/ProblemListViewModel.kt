@@ -10,6 +10,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
@@ -23,16 +24,21 @@ class ProblemListViewModel @Inject constructor(private val problemRepository: Pr
         }
     }
 
-    fun isProblemNumberDuplicated(number: String)= withProblemsOfSelectedBookNotNull { problems ->
-        number in problems.map { it.number }
+    fun addProblem(problem: Problem) = doIOAndGetProblemsOfSelectedBook {
+        if (problem.id != 0L) throw IllegalArgumentException("insert problem with id already set")
+        problemRepository.insert(problem)
     }
 
     fun updateProblemNumber(problem: Problem, newNumber: String, bookId: Long) = doIOAndGetProblemsOfSelectedBook {
-        problemRepository.update(problem.copy(number = newNumber))
+        problemRepository.update(problem.copy(mainNumber = newNumber))
     }
 
     fun addDefaultProblems(bookId: Long) = doIOAndGetProblemsOfSelectedBook {
         problemRepository.insertAll(getDefaultProblems(bookId = bookId))
+    }
+
+    fun isProblemNumberDuplicated(number: String)= withProblemsOfSelectedBookNotNull { problems ->
+        number in problems.map { it.mainNumber }
     }
 
     private fun getDefaultProblems(bookId: Long): List<Problem> {
@@ -41,7 +47,7 @@ class ProblemListViewModel @Inject constructor(private val problemRepository: Pr
             ((page - 1) * 5 + 1 .. (page - 1) * 5 + 5)
                 .map { it.toString() }
                 .map { number ->
-                    Problem(bookId = bookId, page = page, number = number)
+                    Problem(bookId = bookId, page = page, mainNumber = number)
                 }
         }.flatten()
     }

@@ -10,7 +10,7 @@ import com.hc.problem_timer_2.ui.theme.Primary
 
 @Composable
 fun BaseAlertDialog(
-    title: String,
+    title: String? = null,
     confirmText: String,
     dismissText: String,
     text: @Composable () -> Unit,
@@ -18,7 +18,7 @@ fun BaseAlertDialog(
     hideDialog: () -> Unit
 ) {
     AlertDialog(
-        title = { Text(text = title, fontSize = 16.sp) },
+        title = { if (title != null) Text(text = title, fontSize = 16.sp) },
         text = text,
         containerColor = Color.White,
         onDismissRequest = hideDialog,

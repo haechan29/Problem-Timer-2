@@ -47,7 +47,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
@@ -115,9 +114,10 @@ import com.hc.problem_timer_2.vo.Grade
 import com.hc.problem_timer_2.vo.Grade.*
 import com.hc.problem_timer_2.util.customToast
 import com.hc.problem_timer_2.util.getNow
-import com.hc.problem_timer_2.viewmodel.BookInfo
-import com.hc.problem_timer_2.viewmodel.BookInfoViewModel
+import com.hc.problem_timer_2.viewmodel.SelectedBookInfoViewModel
 import com.hc.problem_timer_2.viewmodel.ProblemListViewModel
+import com.hc.problem_timer_2.vo.onBook
+import com.hc.problem_timer_2.vo.onPage
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -163,7 +163,7 @@ fun TimerScreen() {
 @Composable
 fun BookTab(
     bookListViewModel: BookListViewModel = viewModel(),
-    bookInfoViewModel: BookInfoViewModel = viewModel(),
+    selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel(),
     showAddBookDialog: () -> Unit
 ) {
     val books by bookListViewModel.bookList.observeAsState()
@@ -173,7 +173,7 @@ fun BookTab(
         else books!![selectedItemIndex!!]
     } }
     var isShowingDeleteBookBtn by remember { mutableStateOf(false) }
-    if (selectedBook != null) { bookInfoViewModel.setBook(selectedBook!!) }
+    if (selectedBook != null) { selectedBookInfoViewModel.select(selectedBook!!) }
     BookTabStateless(
         books!!,
         { selectedItemIndex },
@@ -186,10 +186,10 @@ fun BookTab(
 
 fun updateSelectedBook(
     selectedBook: Book,
-    bookInfoViewModel: BookInfoViewModel,
+    selectedBookInfoViewModel: SelectedBookInfoViewModel,
     problemListViewModel: ProblemListViewModel
 ) {
-    bookInfoViewModel.setBook(selectedBook)
+    selectedBookInfoViewModel.select(selectedBook)
 }
 
 @Composable
@@ -316,12 +316,12 @@ fun PageAndGradeTab(isGradeMode: () -> Boolean, setGradeMode: (Boolean) -> Unit)
 
 @Composable
 fun PageTab(
-    bookInfoViewModel: BookInfoViewModel = viewModel(),
+    selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel(),
     problemListViewModel: ProblemListViewModel = viewModel(),
     scope: CoroutineScope = rememberCoroutineScope(),
     listState: LazyListState = rememberLazyListState()
 ) {
-    val bookInfo by bookInfoViewModel.bookInfo.observeAsState()
+    val bookInfo by selectedBookInfoViewModel.selectedBookInfo.observeAsState()
     if (!bookInfo!!.isBookSelected()) return
     val pages = problemListViewModel.problems.value!!
         .filter { it.bookId == bookInfo!!.selectedBook!!.id }
@@ -329,11 +329,13 @@ fun PageTab(
         .distinct()
     if (pages.isEmpty()) problemListViewModel.addDefaultProblems(bookInfo!!.selectedBook!!.id)
     val selectedPage = bookInfo!!.selectedPage
+
     LaunchedEffect(key1 = selectedPage) {
-        if (selectedPage == null) return@LaunchedEffect
+        if (!pages.contains(selectedPage)) return@LaunchedEffect
         val index = pages.indexOf(selectedPage)
         scope.launch { listState.animateScrollToItem(index) }
     }
+
     PageTabStateless(pages, selectedPage, listState)
 }
 
@@ -342,7 +344,7 @@ fun PageTabStateless(
     pages: List<Int>,
     selectedPage: Int?,
     listState: LazyListState,
-    bookInfoViewModel: BookInfoViewModel = viewModel(),
+    selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel(),
     context: Context = LocalContext.current
 ) {
     Row(
@@ -351,9 +353,9 @@ fun PageTabStateless(
             .fillMaxHeight(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        PageButton(true) { setPageOrAlert(pages, selectedPage!! - 1, bookInfoViewModel, context) }
-        PageBox(pages, listState, !bookInfoViewModel.bookInfo.value!!.isBookSelected() )
-        PageButton(false) { setPageOrAlert(pages, selectedPage!! + 1, bookInfoViewModel, context) }
+        PageButton(true) { setPageOrAlert(pages, selectedPage!! - 1, selectedBookInfoViewModel, context) }
+        PageBox(pages, listState, !selectedBookInfoViewModel.selectedBookInfo.value!!.isBookSelected() )
+        PageButton(false) { setPageOrAlert(pages, selectedPage!! + 1, selectedBookInfoViewModel, context) }
     }
 }
 
@@ -380,7 +382,7 @@ fun PageBox(
     pages: List<Int>?,
     listState: LazyListState,
     isBookSelected: Boolean,
-    bookInfoViewModel: BookInfoViewModel = viewModel(),
+    selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel(),
     focusManager: FocusManager = LocalFocusManager.current,
     context: Context = LocalContext.current
 ) {
@@ -416,7 +418,7 @@ fun PageBox(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = {
                     focusManager.clearFocus()
-                    setPage(pageInput, bookInfoViewModel, pages) { notifyPageOutOfRange(context, pages) }
+                    setPage(pageInput, selectedBookInfoViewModel, pages) { notifyPageOutOfRange(context, pages) }
                     pageInput = ""
                 }),
                 textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center),
@@ -441,9 +443,9 @@ fun GradeTab(
     isGradeMode: () -> Boolean,
     setGradeMode: (Boolean) -> Unit,
     context: Context = LocalContext.current,
-    bookInfoViewModel: BookInfoViewModel = viewModel()
+    selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel()
 ) {
-    val bookInfo by bookInfoViewModel.bookInfo.observeAsState()
+    val bookInfo by selectedBookInfoViewModel.selectedBookInfo.observeAsState()
     var text by remember { mutableStateOf(context.getString(R.string.view_problems)) }
     val progress by animateFloatAsState(
         targetValue = if (isGradeMode()) 1f else 0f,
@@ -535,13 +537,13 @@ fun AddBookDialog(
 fun ColumnScope.ProblemListTab(
     isGradeMode: () -> Boolean,
     setSelectedProblem: (Problem) -> Unit,
-    bookInfoViewModel: BookInfoViewModel = viewModel(),
+    selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel(),
     problemListViewModel: ProblemListViewModel = viewModel(),
     problemRecordListViewModel: ProblemRecordListViewModel = viewModel()
 ) {
     val problems by problemListViewModel.problems.observeAsState()
     val problemRecordList by problemRecordListViewModel.problemRecordListOnSelectedPage.observeAsState()
-    val bookInfo by bookInfoViewModel.bookInfo.observeAsState()
+    val bookInfo by selectedBookInfoViewModel.selectedBookInfo.observeAsState()
     val problemsOnSelectedPage = problems!!
         .onBook(bookInfo!!.selectedBook)
         .onPage(bookInfo!!.selectedPage)
@@ -565,7 +567,7 @@ fun ColumnScope.ProblemListTabStateless(
     setSelectedProblem: (Problem) -> Unit,
     isGradeMode: () -> Boolean,
     context: Context = LocalContext.current,
-    bookInfoViewModel: BookInfoViewModel = viewModel()
+    selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel()
 ) {
     Box(
         modifier = Modifier
@@ -573,7 +575,7 @@ fun ColumnScope.ProblemListTabStateless(
             .weight(1f),
         contentAlignment = Alignment.Center
     ) {
-        if (!bookInfoViewModel.bookInfo.value!!.isBookSelected()) {
+        if (!selectedBookInfoViewModel.selectedBookInfo.value!!.isBookSelected()) {
             Text(
                 text = context.getString(R.string.select_book),
                 fontSize = 12.sp
@@ -586,7 +588,7 @@ fun ColumnScope.ProblemListTabStateless(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 items(items = problemsOnSelectedPage) { problem ->
-                    val problemRecords = problemRecordListMapOnSelectedPage[problem.getNumber()] ?: emptyList()
+                    val problemRecords = problemRecordListMapOnSelectedPage[problem.number] ?: emptyList()
                     var color by remember { mutableStateOf(BackgroundGrey) }
                     var isShowingProblemRecords by remember { mutableStateOf(false) }
 
@@ -719,7 +721,7 @@ fun ProblemNumberBodyTab(
     isGradeMode: () -> Boolean,
     focusManager: FocusManager = LocalFocusManager.current,
     context: Context = LocalContext.current,
-    bookInfoViewModel: BookInfoViewModel = viewModel(),
+    selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel(),
     problemListViewModel: ProblemListViewModel = viewModel()
 ) {
     var isProblemNumberFocused by remember { mutableStateOf(false) }
@@ -743,9 +745,9 @@ fun ProblemNumberBodyTab(
         keyboardActions = KeyboardActions(onDone = {
             if (problemListViewModel.isProblemNumberDuplicated(problemNumberInput)) {
                 customToast("문제 번호가 중복됩니다", context)
-                problemNumberInput = problem.getNumber()
+                problemNumberInput = problem.number
             } else {
-                val bookInfo = bookInfoViewModel.bookInfo.value!!
+                val bookInfo = selectedBookInfoViewModel.selectedBookInfo.value!!
                 problemListViewModel.updateProblemNumber(problem, problemNumberInput, bookInfo.selectedBook!!.id)
             }
             focusManager.clearFocus()
@@ -757,7 +759,7 @@ fun ProblemNumberBodyTab(
             if (!isProblemNumberFocused) {
                 Text(
                     modifier = Modifier.wrapContentSize(),
-                    text = problem.getNumber()
+                    text = problem.number
                 )
             }
             innerTextField()
@@ -771,7 +773,7 @@ fun RowScope.ProblemTimerTab(
     problemRecords: List<ProblemRecord>,
     isGradeMode: () -> Boolean,
     setColor: (Color) -> Unit,
-    bookInfoViewModel: BookInfoViewModel = viewModel(),
+    selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel(),
     problemRecordListViewModel: ProblemRecordListViewModel = viewModel()
 ) {
     var isTimerRunning by remember { mutableStateOf(false) }
@@ -791,9 +793,9 @@ fun RowScope.ProblemTimerTab(
         if (!isGradeMode() && !shouldWaitToRecordAgain(recentProblemRecord) && currentGrade != Unranked) {
             problemRecordListViewModel.addProblemRecord(
                 ProblemRecord(
-                    bookId = bookInfoViewModel.bookInfo.value!!.selectedBook!!.id,
+                    bookId = selectedBookInfoViewModel.selectedBookInfo.value!!.selectedBook!!.id,
                     page = problem.page,
-                    number = problem.getNumber(),
+                    number = problem.number,
                     timeRecord = currentTimeRecord,
                     grade = currentGrade,
                     solvedAt = getNow()
@@ -834,10 +836,10 @@ fun RowScope.ProblemTimerTabStateless(
             .clickable {
                 if (shouldWaitToRecordAgain(recentProblemRecord)) {
                     if (!isGradeMode()) customToast(
-                        "${problem.getNumber()}번 문제는 내일 다시 풀 수 있습니다",
+                        "${problem.number}번 문제는 내일 다시 풀 수 있습니다",
                         context
                     )
-                    else customToast("${problem.getNumber()}번 문제는 내일 다시 채점 수 있습니다", context)
+                    else customToast("${problem.number}번 문제는 내일 다시 채점 수 있습니다", context)
                 } else {
                     if (!isGradeMode()) toggleTimerRunning()
                     else {
@@ -944,37 +946,35 @@ fun ProblemRecordListTab(problemRecords: List<ProblemRecord>) {
 
 @Composable
 fun AddProblemDialog(problem: Problem, hideDialog: () -> Unit, problemListViewModel: ProblemListViewModel = viewModel()) {
-    var selectedIdx by remember { mutableStateOf<Int?>(null) }
+    var selectedProblem by remember { mutableStateOf<Problem?>(null) }
     val problemWithoutId = problem.copy(id = 0L)
     val nextSubProblem = problemWithoutId.copy(subNumber = if (problem.isMainProblem()) "1" else "${problem.subNumber!!.toInt() + 1}")
-    val nextMainProblem = problemWithoutId.copy(mainNumber = "${problem.mainNumber.toInt() + 1}")
+    val nextMainProblem = problemWithoutId.copy(mainNumber = "${problem.mainNumber.toInt() + 1}").copy(subNumber = null)
+    val isNextSubProblemSelectable = !problemListViewModel.isProblemNumberDuplicated(nextSubProblem.number)
+    val isNextMainProblemSelectable = !problemListViewModel.isProblemNumberDuplicated(nextMainProblem.number)
+    if (!isNextSubProblemSelectable && !isNextMainProblemSelectable) return
+
     BaseAlertDialog(
         confirmText = "선택하기",
         dismissText = "취소",
         text = {
             Column {
-                DialogButton(0, { selectedIdx }, { selectedIdx = 0 }, "${nextSubProblem.getNumber()}번 문제 추가하기")
-                if (problem.isMainProblem()) {
-                    DialogButton(1, { selectedIdx }, { selectedIdx = 1 }, "${nextMainProblem.getNumber()}번 문제 추가하기")
+                if (isNextSubProblemSelectable) {
+                    DialogButton(nextSubProblem, { selectedProblem }, { value: Problem -> selectedProblem = value })
+                }
+                if (isNextMainProblemSelectable) {
+                    DialogButton(nextMainProblem, { selectedProblem }, { value: Problem -> selectedProblem = value })
                 }
             }
         },
-        onConfirm = {
-            when (selectedIdx) {
-                0 -> nextSubProblem
-                1 -> nextMainProblem
-                else -> null
-            }?.let { selectedProblem ->
-                problemListViewModel.addProblem(selectedProblem)
-            }
-        },
+        onConfirm = { selectedProblem?.run { problemListViewModel.addProblem(this) } },
         hideDialog = hideDialog
     )
 }
 
 @Composable
-fun DialogButton(index: Int, getSelectedIdx: () -> Int?, select: () -> Unit, text: String) {
-    val isSelected = index == getSelectedIdx()
+fun DialogButton(problem: Problem, getSelectedProblem: () -> Problem?, setSelectedProblem: (Problem) -> Unit) {
+    val isSelected = problem == getSelectedProblem()
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -984,11 +984,11 @@ fun DialogButton(index: Int, getSelectedIdx: () -> Int?, select: () -> Unit, tex
                 shape = CircleShape
             )
             .padding(horizontal = 15.dp)
-            .clickable { select() },
+            .clickable { setSelectedProblem(problem) },
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = text,
+            text = "${problem.number}번 문제 추가하기",
             color = if (isSelected) Color.White else Color.Black
         )
     }
@@ -1008,25 +1008,25 @@ fun ComponentActivity.getDataFromLocalDB() {
 fun setPageOrAlert(
     pages: List<Int>,
     page: Int,
-    bookInfoViewModel: BookInfoViewModel,
+    selectedBookInfoViewModel: SelectedBookInfoViewModel,
     context: Context
 ) {
-    if (!bookInfoViewModel.bookInfo.value!!.isBookSelected()) {
+    if (!selectedBookInfoViewModel.selectedBookInfo.value!!.isBookSelected()) {
         customToast(context.getString(R.string.select_book), context)
         return
     }
-    setPage("$page", bookInfoViewModel, pages) {
+    setPage("$page", selectedBookInfoViewModel, pages) {
         notifyPageOutOfRange(context, pages)
     }
 }
 
-fun setPage(pageString: String, bookInfoViewModel: BookInfoViewModel, pages: List<Int>, alert: () -> Unit) =
+fun setPage(pageString: String, selectedBookInfoViewModel: SelectedBookInfoViewModel, pages: List<Int>, alert: () -> Unit) =
     try {
         val page = pageString.toInt()
         invokeAndBlock(SET_PAGE, 500) {
             if (page !in pages) throw IndexOutOfBoundsException("page out of pages // " +
                     "page: $page, pages: ${pages.first()} - ${pages.last()}")
-            bookInfoViewModel.setPage(page)
+            selectedBookInfoViewModel.select(page)
         }
     } catch(e: Exception) {
         alert()
@@ -1034,18 +1034,6 @@ fun setPage(pageString: String, bookInfoViewModel: BookInfoViewModel, pages: Lis
 
 fun notifyPageOutOfRange(context: Context, pages: List<Int>)
         = customToast("${pages.first()}과 ${pages.last()} 사이의 값을 입력해주세요", context)
-
-fun getProblemsOnSelectedPage(problems: List<Problem>, bookInfo: BookInfo): List<Problem> {
-    val problemsOnSelectedBook = problems.filter { it.bookId == bookInfo.selectedBook?.id }
-    val problemsOnSelectedPage = problemsOnSelectedBook.filter { it.page == bookInfo.selectedPage }
-    return problemsOnSelectedPage
-}
-
-fun List<Problem>.onBook(book: Book?) = filter { it.bookId == book?.id }
-fun List<Problem>.onPage(page: Int?) = filter { it.page == page }
-
-fun List<ProblemRecord>.onBook(book: Book?) = filter { it.bookId == book?.id }
-fun List<ProblemRecord>.onPage(page: Int?) = filter { it.page == page }
 
 fun List<ProblemRecord>.toProblemRecordListMap() =
     fold(mutableMapOf<String, List<ProblemRecord>>()) { map, problemRecord ->

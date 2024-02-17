@@ -38,7 +38,7 @@ class ProblemListViewModel @Inject constructor(private val problemRepository: Pr
     }
 
     fun isProblemNumberDuplicated(number: String)= withProblemsOfSelectedBookNotNull { problems ->
-        number in problems.map { it.mainNumber }
+        number in problems.map { it.number }
     }
 
     private fun getDefaultProblems(bookId: Long): List<Problem> {

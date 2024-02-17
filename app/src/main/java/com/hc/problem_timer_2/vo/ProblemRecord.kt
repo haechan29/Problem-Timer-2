@@ -11,3 +11,6 @@ data class ProblemRecord(
     val grade: Grade,
     val solvedAt: LocalDateTime
 )
+
+fun List<ProblemRecord>.onBook(book: Book?) = filter { it.bookId == book?.id }
+fun List<ProblemRecord>.onPage(page: Int?) = filter { it.page == page }

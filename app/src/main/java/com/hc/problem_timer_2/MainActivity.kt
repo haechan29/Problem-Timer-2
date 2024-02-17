@@ -115,6 +115,7 @@ import com.hc.problem_timer_2.vo.Grade
 import com.hc.problem_timer_2.vo.Grade.*
 import com.hc.problem_timer_2.util.customToast
 import com.hc.problem_timer_2.util.getNow
+import com.hc.problem_timer_2.viewmodel.BookInfo
 import com.hc.problem_timer_2.viewmodel.BookInfoViewModel
 import com.hc.problem_timer_2.viewmodel.ProblemListViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -541,11 +542,19 @@ fun ColumnScope.ProblemListTab(
     val problems by problemListViewModel.problems.observeAsState()
     val problemRecordList by problemRecordListViewModel.problemRecordListOnSelectedPage.observeAsState()
     val bookInfo by bookInfoViewModel.bookInfo.observeAsState()
-    val problemsOnSelectedBook = problems!!.filter { it.bookId == bookInfo!!.selectedBook?.id }
-    val problemsOnSelectedPage = problemsOnSelectedBook.filter { it.page == bookInfo!!.selectedPage }
-    val problemRecordListOnSelectedBook = problemRecordList!!.filter { it.bookId == bookInfo!!.selectedBook?.id }
-    val problemRecordListOnSelectedPage = problemRecordListOnSelectedBook.filter { it.page == bookInfo!!.selectedPage }
-    val problemRecordListMapOnSelectedPage = problemRecordListOnSelectedPage.toProblemRecordListMap()
+    val problemsOnSelectedPage = problems!!
+        .onBook(bookInfo!!.selectedBook)
+        .onPage(bookInfo!!.selectedPage)
+        .sortedWith(
+            compareBy(
+                { it.mainNumber.toInt() },
+                { if (it.isMainProblem()) 0 else it.subNumber!!.toInt() }
+            )
+        )
+    val problemRecordListMapOnSelectedPage = problemRecordList!!
+        .onBook(bookInfo!!.selectedBook)
+        .onPage(bookInfo!!.selectedPage)
+        .toProblemRecordListMap()
     ProblemListTabStateless(problemsOnSelectedPage, problemRecordListMapOnSelectedPage, setSelectedProblem, isGradeMode)
 }
 
@@ -1025,6 +1034,18 @@ fun setPage(pageString: String, bookInfoViewModel: BookInfoViewModel, pages: Lis
 
 fun notifyPageOutOfRange(context: Context, pages: List<Int>)
         = customToast("${pages.first()}과 ${pages.last()} 사이의 값을 입력해주세요", context)
+
+fun getProblemsOnSelectedPage(problems: List<Problem>, bookInfo: BookInfo): List<Problem> {
+    val problemsOnSelectedBook = problems.filter { it.bookId == bookInfo.selectedBook?.id }
+    val problemsOnSelectedPage = problemsOnSelectedBook.filter { it.page == bookInfo.selectedPage }
+    return problemsOnSelectedPage
+}
+
+fun List<Problem>.onBook(book: Book?) = filter { it.bookId == book?.id }
+fun List<Problem>.onPage(page: Int?) = filter { it.page == page }
+
+fun List<ProblemRecord>.onBook(book: Book?) = filter { it.bookId == book?.id }
+fun List<ProblemRecord>.onPage(page: Int?) = filter { it.page == page }
 
 fun List<ProblemRecord>.toProblemRecordListMap() =
     fold(mutableMapOf<String, List<ProblemRecord>>()) { map, problemRecord ->

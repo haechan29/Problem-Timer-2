@@ -29,8 +29,12 @@ class ProblemListViewModel @Inject constructor(private val problemRepository: Pr
         problemRepository.insert(problem)
     }
 
-    fun updateProblemNumber(problem: Problem, newNumber: String, bookId: Long) = doIOAndGetProblemsOfSelectedBook {
+    fun updateProblemNumber(problem: Problem, newNumber: String) = doIOAndGetProblemsOfSelectedBook {
         problemRepository.update(problem.copy(mainNumber = newNumber))
+    }
+
+    fun deleteProblem(problem: Problem) = doIOAndGetProblemsOfSelectedBook {
+        problemRepository.delete(problem)
     }
 
     fun addDefaultProblems(bookId: Long) = doIOAndGetProblemsOfSelectedBook {

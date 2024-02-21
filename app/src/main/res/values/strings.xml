@@ -5,4 +5,6 @@
     <string name="grade">채점\n하기</string>
     <string name="select_book">교재를 선택해주세요</string>
     <string name="no_problem_record">아직 문제를 푼 기록이 없습니다</string>
+    <string name="invalid_number_input">올바른 숫자를 입력해주세요 ex. 1, 12</string>
+    <string name="duplicated_number_input">같은 페이지에 이미 문제 번호가 존재합니다.</string>
 </resources>

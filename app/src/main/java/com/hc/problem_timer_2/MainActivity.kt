@@ -72,14 +72,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusManager
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.WindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -105,11 +111,13 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import androidx.compose.ui.text.font.lerp
 import androidx.compose.ui.text.input.ImeAction
+import com.hc.problem_timer_2.MainActivity.Companion.POSITIVE_INTEGER_MATCHER
 import com.hc.problem_timer_2.vo.Book
 import com.hc.problem_timer_2.vo.Problem
 import com.hc.problem_timer_2.vo.ProblemRecord
 import com.hc.problem_timer_2.ui.theme.BackgroundGrey
 import com.hc.problem_timer_2.util.BaseAlertDialog
+import com.hc.problem_timer_2.util.BaseDialog
 import com.hc.problem_timer_2.vo.Grade
 import com.hc.problem_timer_2.vo.Grade.*
 import com.hc.problem_timer_2.util.customToast
@@ -141,6 +149,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val PAGE_ITEM_SIZE = 40
+        const val POSITIVE_INTEGER_MATCHER = "^([1-9]\\d*)$"
     }
 }
 
@@ -148,15 +157,16 @@ class MainActivity : ComponentActivity() {
 fun TimerScreen() {
     var isGradeMode by remember { mutableStateOf(false) }
     var isShowingAddBookDialog by remember { mutableStateOf(false) }
-    var selectedProblem by remember { mutableStateOf<Problem?>(null) }
+    var problemToUpdate by remember { mutableStateOf<Problem?>(null) }
+    var problemToEdit by remember { mutableStateOf<Problem?>(null) }
     Column(modifier = Modifier.fillMaxSize()) {
         BookTab { isShowingAddBookDialog = true }
         Divider(thickness = 1.dp, color = Color.LightGray)
         PageAndGradeTab({ isGradeMode }, { value: Boolean -> isGradeMode = value })
         Divider(thickness = 1.dp, color = Color.LightGray)
         if (isShowingAddBookDialog) AddBookDialog { isShowingAddBookDialog = false }
-        ProblemListTab({ isGradeMode }, { value: Problem -> selectedProblem = value})
-        if (selectedProblem != null) AddProblemDialog(selectedProblem!!, { selectedProblem = null })
+        ProblemListTab({ isGradeMode }, { value: Problem -> problemToUpdate = value }, { value: Problem -> problemToEdit == value }, { problemToEdit = null })
+        if (problemToUpdate != null) UpdateProblemDialog(problemToUpdate!!, { problemToUpdate = null }, { problemToEdit = problemToUpdate })
     }
 }
 
@@ -182,14 +192,6 @@ fun BookTab(
         { isShowingDeleteBookBtn },
         { value: Boolean -> isShowingDeleteBookBtn = value}
     )
-}
-
-fun updateSelectedBook(
-    selectedBook: Book,
-    selectedBookInfoViewModel: SelectedBookInfoViewModel,
-    problemListViewModel: ProblemListViewModel
-) {
-    selectedBookInfoViewModel.select(selectedBook)
 }
 
 @Composable
@@ -536,7 +538,9 @@ fun AddBookDialog(
 @Composable
 fun ColumnScope.ProblemListTab(
     isGradeMode: () -> Boolean,
-    setSelectedProblem: (Problem) -> Unit,
+    setProblemToUpdate: (Problem) -> Unit,
+    isProblemEditing: (Problem) -> Boolean,
+    finishEditingProblem: () -> Unit,
     selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel(),
     problemListViewModel: ProblemListViewModel = viewModel(),
     problemRecordListViewModel: ProblemRecordListViewModel = viewModel()
@@ -557,14 +561,16 @@ fun ColumnScope.ProblemListTab(
         .onBook(bookInfo!!.selectedBook)
         .onPage(bookInfo!!.selectedPage)
         .toProblemRecordListMap()
-    ProblemListTabStateless(problemsOnSelectedPage, problemRecordListMapOnSelectedPage, setSelectedProblem, isGradeMode)
+    ProblemListTabStateless(problemsOnSelectedPage, problemRecordListMapOnSelectedPage, setProblemToUpdate, isProblemEditing, finishEditingProblem, isGradeMode)
 }
 
 @Composable
 fun ColumnScope.ProblemListTabStateless(
     problemsOnSelectedPage: List<Problem>,
     problemRecordListMapOnSelectedPage: Map<String, List<ProblemRecord>>,
-    setSelectedProblem: (Problem) -> Unit,
+    setProblemToUpdate: (Problem) -> Unit,
+    isProblemEditing: (Problem) -> Boolean,
+    finishEditingProblem: () -> Unit,
     isGradeMode: () -> Boolean,
     context: Context = LocalContext.current,
     selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel()
@@ -595,7 +601,9 @@ fun ColumnScope.ProblemListTabStateless(
                     ProblemAndProblemRecordTabStateless(
                         problem,
                         problemRecords,
-                        { setSelectedProblem(problem) },
+                        { setProblemToUpdate(problem) },
+                        { isProblemEditing(problem) },
+                        finishEditingProblem,
                         isGradeMode,
                         color,
                         { value: Color -> color = value},
@@ -612,7 +620,9 @@ fun ColumnScope.ProblemListTabStateless(
 fun ProblemAndProblemRecordTabStateless(
     problem: Problem,
     problemRecords: List<ProblemRecord>,
-    selectProblem: () -> Unit,
+    updateProblem: () -> Unit,
+    isProblemEditing: () -> Boolean,
+    finishEditingProblem: () -> Unit,
     isGradeMode: () -> Boolean,
     color: Color,
     setColor: (Color) -> Unit,
@@ -638,7 +648,9 @@ fun ProblemAndProblemRecordTabStateless(
             ProblemTab(
                 problem,
                 problemRecords,
-                selectProblem,
+                updateProblem,
+                isProblemEditing,
+                finishEditingProblem,
                 isGradeMode,
                 isShowingProblemRecords,
                 { setShowingProblemRecords(!isShowingProblemRecords) },
@@ -660,7 +672,9 @@ fun ProblemAndProblemRecordTabStateless(
 fun ProblemTab(
     problem: Problem,
     problemRecords: List<ProblemRecord>,
-    selectProblem: () -> Unit,
+    updateProblem: () -> Unit,
+    isProblemEditing: () -> Boolean,
+    finishEditingProblem: () -> Unit,
     isGradeMode: () -> Boolean,
     isVisible: Boolean,
     toggleVisibility: () -> Unit,
@@ -673,22 +687,25 @@ fun ProblemTab(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        ProblemNumberTab(problem, problemRecords, selectProblem, isGradeMode)
+        ProblemNumberTab(problem, problemRecords, updateProblem, isProblemEditing, finishEditingProblem, isGradeMode)
         ProblemTimerTab(problem, problemRecords, isGradeMode, setColor)
         ViewMoreButton(isVisible, toggleVisibility)
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun ProblemNumberTab(
     problem: Problem,
     problemRecords: List<ProblemRecord>,
-    selectProblem: () -> Unit,
+    updateProblem: () -> Unit,
+    isProblemEditing: () -> Boolean,
+    finishEditingProblem: () -> Unit,
     isGradeMode: () -> Boolean,
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         ProblemNumberHeaderTab(problemRecords)
-        ProblemNumberBodyTab(problem, selectProblem, isGradeMode)
+        ProblemNumberBodyTab(problem, updateProblem, isProblemEditing, finishEditingProblem, isGradeMode)
         Spacer(modifier = Modifier.weight(1f))
     }
 }
@@ -717,54 +734,72 @@ fun ColumnScope.ProblemNumberHeaderTab(problemRecords: List<ProblemRecord>) {
 @Composable
 fun ProblemNumberBodyTab(
     problem: Problem,
-    selectProblem: () -> Unit,
+    updateProblem: () -> Unit,
+    isProblemEditing: () -> Boolean,
+    finishEditingProblem: () -> Unit,
     isGradeMode: () -> Boolean,
-    focusManager: FocusManager = LocalFocusManager.current,
     context: Context = LocalContext.current,
-    selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel(),
+    focusManager: FocusManager = LocalFocusManager.current,
+    focusRequester: FocusRequester = remember { FocusRequester() },
+    windowInfo: WindowInfo = LocalWindowInfo.current,
     problemListViewModel: ProblemListViewModel = viewModel()
 ) {
-    var isProblemNumberFocused by remember { mutableStateOf(false) }
     var problemNumberInput by remember { mutableStateOf("") }
 
-    BasicTextField(
-        modifier = Modifier
-            .width(60.dp)
-            .onFocusChanged {
-                isProblemNumberFocused = it.isFocused
-                if (it.isFocused) selectProblem()
-            },
-        enabled = !isGradeMode(),
-        value = problemNumberInput,
-        onValueChange = { problemNumberInput = it },
-        textStyle = TextStyle(
-            fontSize = 14.sp,
-            textAlign = TextAlign.Center
-        ),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-        keyboardActions = KeyboardActions(onDone = {
-            if (problemListViewModel.isProblemNumberDuplicated(problemNumberInput)) {
-                customToast("문제 번호가 중복됩니다", context)
-                problemNumberInput = problem.number
-            } else {
-                val bookInfo = selectedBookInfoViewModel.selectedBookInfo.value!!
-                problemListViewModel.updateProblemNumber(problem, problemNumberInput, bookInfo.selectedBook!!.id)
-            }
-            focusManager.clearFocus()
-            problemNumberInput = ""
-        }),
-        singleLine = true,
-        maxLines = 1,
-        decorationBox = { innerTextField ->
-            if (!isProblemNumberFocused) {
-                Text(
-                    modifier = Modifier.wrapContentSize(),
-                    text = problem.number
-                )
-            }
-            innerTextField()
+    LaunchedEffect(key1 = isProblemEditing()) {
+        if (isProblemEditing()) {
+            snapshotFlow { windowInfo.isWindowFocused }
+                .collect { isWindowFocused ->
+                    if (isWindowFocused) {
+                        focusRequester.requestFocus()
+                    }
+                }
         }
-    )
+    }
+
+    Box(modifier = Modifier.clickable { if (!isProblemEditing()) updateProblem() }) {
+        BasicTextField(
+            modifier = Modifier
+                .width(60.dp)
+                .focusRequester(focusRequester),
+            enabled = !isGradeMode() && isProblemEditing(),
+            value = problemNumberInput,
+            onValueChange = { problemNumberInput = it },
+            textStyle = TextStyle(
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center
+            ),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(onDone = {
+                if (!isPositiveInteger(problemNumberInput)) {
+                    customToast(context.getString(R.string.invalid_number_input), context)
+                    problemNumberInput = problem.number
+                } else if (problemListViewModel.isProblemNumberDuplicated(problemNumberInput)) {
+                    customToast(context.getString(R.string.duplicated_number_input), context)
+                    problemNumberInput = problem.number
+                } else {
+                    problemListViewModel.updateProblemNumber(problem, problemNumberInput)
+                }
+                focusManager.clearFocus()
+                finishEditingProblem()
+                problemNumberInput = ""
+            }),
+            singleLine = true,
+            maxLines = 1,
+            decorationBox = { innerTextField ->
+                if (!isProblemEditing()) {
+                    Text(
+                        modifier = Modifier.wrapContentSize(),
+                        text = problem.number
+                    )
+                }
+                innerTextField()
+            }
+        )
+    }
 }
 
 @Composable
@@ -945,51 +980,69 @@ fun ProblemRecordListTab(problemRecords: List<ProblemRecord>) {
 }
 
 @Composable
-fun AddProblemDialog(problem: Problem, hideDialog: () -> Unit, problemListViewModel: ProblemListViewModel = viewModel()) {
-    var selectedProblem by remember { mutableStateOf<Problem?>(null) }
+fun UpdateProblemDialog(problem: Problem, hideDialog: () -> Unit, editProblem: () -> Unit, problemListViewModel: ProblemListViewModel = viewModel()) {
     val problemWithoutId = problem.copy(id = 0L)
     val nextSubProblem = problemWithoutId.copy(subNumber = if (problem.isMainProblem()) "1" else "${problem.subNumber!!.toInt() + 1}")
     val nextMainProblem = problemWithoutId.copy(mainNumber = "${problem.mainNumber.toInt() + 1}").copy(subNumber = null)
-    val isNextSubProblemSelectable = !problemListViewModel.isProblemNumberDuplicated(nextSubProblem.number)
-    val isNextMainProblemSelectable = !problemListViewModel.isProblemNumberDuplicated(nextMainProblem.number)
-    if (!isNextSubProblemSelectable && !isNextMainProblemSelectable) return
 
-    BaseAlertDialog(
-        confirmText = "선택하기",
-        dismissText = "취소",
+    BaseDialog(
         text = {
             Column {
-                if (isNextSubProblemSelectable) {
-                    DialogButton(nextSubProblem, { selectedProblem }, { value: Problem -> selectedProblem = value })
+                if (!problemListViewModel.isProblemNumberDuplicated(nextSubProblem.number)) {
+                    DialogButton(
+                        onClick = {
+                            problemListViewModel.addProblem(nextSubProblem)
+                            hideDialog()
+                        },
+                        text = "${nextSubProblem.number}번 문제 추가하기"
+                    )
                 }
-                if (isNextMainProblemSelectable) {
-                    DialogButton(nextMainProblem, { selectedProblem }, { value: Problem -> selectedProblem = value })
+                if (!problemListViewModel.isProblemNumberDuplicated(nextMainProblem.number)) {
+                    DialogButton(
+                        onClick = {
+                            problemListViewModel.addProblem(nextMainProblem)
+                            hideDialog()
+                        },
+                        text = "${nextMainProblem.number}번 문제 추가하기"
+                    )
                 }
+                DialogButton(
+                    onClick = {
+                        editProblem()
+                        hideDialog()
+                    },
+                    text = "${problem.number}번 문제 수정하기"
+                )
+                DialogButton(
+                    onClick = {
+                        problemListViewModel.deleteProblem(problem)
+                        hideDialog()
+                    },
+                    text = "${problem.number}번 문제 삭제하기"
+                )
             }
         },
-        onConfirm = { selectedProblem?.run { problemListViewModel.addProblem(this) } },
         hideDialog = hideDialog
     )
 }
 
 @Composable
-fun DialogButton(problem: Problem, getSelectedProblem: () -> Problem?, setSelectedProblem: (Problem) -> Unit) {
-    val isSelected = problem == getSelectedProblem()
+fun DialogButton(onClick: () -> Unit, text: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(50.dp)
             .background(
-                color = if (isSelected) Color.Black else Color.LightGray,
+                color = Color.Black,
                 shape = CircleShape
             )
             .padding(horizontal = 15.dp)
-            .clickable { setSelectedProblem(problem) },
+            .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "${problem.number}번 문제 추가하기",
-            color = if (isSelected) Color.White else Color.Black
+            text = text,
+            color = Color.White
         )
     }
 }
@@ -1046,6 +1099,8 @@ fun List<ProblemRecord>.toProblemRecordListMap() =
                 .toMutableList()
         map
     }
+
+fun isPositiveInteger(s: String) = s.matches(POSITIVE_INTEGER_MATCHER.toRegex())
 
 fun toTimeFormat(timeRecord: Int): String {
     val ms = (timeRecord / 100) % 10

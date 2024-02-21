@@ -6,11 +6,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hc.problem_timer_2.repository.ProblemRepository
 import com.hc.problem_timer_2.vo.Problem
+import com.hc.problem_timer_2.vo.onBook
+import com.hc.problem_timer_2.vo.onPage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
@@ -41,8 +42,11 @@ class ProblemListViewModel @Inject constructor(private val problemRepository: Pr
         problemRepository.insertAll(getDefaultProblems(bookId = bookId))
     }
 
-    fun isProblemNumberDuplicated(number: String)= withProblemsOfSelectedBookNotNull { problems ->
-        number in problems.map { it.number }
+    fun isProblemNumberDuplicated(problem: Problem, number: String)= withProblemsOfSelectedBookNotNull { problems ->
+        val problemsOnnSamePage = problems
+            .onBook(problem.bookId)
+            .onPage(problem.page)
+        number in problemsOnnSamePage.map { it.number }
     }
 
     private fun getDefaultProblems(bookId: Long): List<Problem> {

@@ -11,5 +11,5 @@ data class Problem(
     fun isMainProblem() = subNumber == null
 }
 
-fun List<Problem>.onBook(book: Book?) = filter { it.bookId == book?.id }
+fun List<Problem>.onBook(bookId: Long?) = filter { it.bookId == bookId }
 fun List<Problem>.onPage(page: Int?) = filter { it.page == page }

@@ -549,7 +549,7 @@ fun ColumnScope.ProblemListTab(
     val problemRecordList by problemRecordListViewModel.problemRecordListOnSelectedPage.observeAsState()
     val bookInfo by selectedBookInfoViewModel.selectedBookInfo.observeAsState()
     val problemsOnSelectedPage = problems!!
-        .onBook(bookInfo!!.selectedBook)
+        .onBook(bookInfo!!.selectedBook?.id)
         .onPage(bookInfo!!.selectedPage)
         .sortedWith(
             compareBy(
@@ -777,7 +777,7 @@ fun ProblemNumberBodyTab(
                 if (!isPositiveInteger(problemNumberInput)) {
                     customToast(context.getString(R.string.invalid_number_input), context)
                     problemNumberInput = problem.number
-                } else if (problemListViewModel.isProblemNumberDuplicated(problemNumberInput)) {
+                } else if (problemListViewModel.isProblemNumberDuplicated(problem, problemNumberInput)) {
                     customToast(context.getString(R.string.duplicated_number_input), context)
                     problemNumberInput = problem.number
                 } else {
@@ -988,7 +988,7 @@ fun UpdateProblemDialog(problem: Problem, hideDialog: () -> Unit, editProblem: (
     BaseDialog(
         text = {
             Column {
-                if (!problemListViewModel.isProblemNumberDuplicated(nextSubProblem.number)) {
+                if (!problemListViewModel.isProblemNumberDuplicated(problem, nextSubProblem.number)) {
                     DialogButton(
                         onClick = {
                             problemListViewModel.addProblem(nextSubProblem)
@@ -997,7 +997,7 @@ fun UpdateProblemDialog(problem: Problem, hideDialog: () -> Unit, editProblem: (
                         text = "${nextSubProblem.number}번 문제 추가하기"
                     )
                 }
-                if (!problemListViewModel.isProblemNumberDuplicated(nextMainProblem.number)) {
+                if (!problemListViewModel.isProblemNumberDuplicated(problem, nextMainProblem.number)) {
                     DialogButton(
                         onClick = {
                             problemListViewModel.addProblem(nextMainProblem)

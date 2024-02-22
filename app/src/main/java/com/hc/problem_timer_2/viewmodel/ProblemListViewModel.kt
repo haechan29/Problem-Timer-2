@@ -12,6 +12,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.lang.Exception
 import javax.inject.Inject
 
 @HiltViewModel
@@ -49,10 +50,16 @@ class ProblemListViewModel @Inject constructor(private val problemRepository: Pr
         number in problemsOnnSamePage.map { it.number }
     }
 
+    fun isLastProblem(problem: Problem) = problem.number == problems.value!!.maxOf { it }.number
+
     private fun getDefaultProblems(bookId: Long): List<Problem> {
         if (bookId == 0L) throw UninitializedPropertyAccessException("book is not initialized")
-        return (1 .. 100).map { page ->
-            ((page - 1) * 5 + 1 .. (page - 1) * 5 + 5)
+        val lastProblem = problems.value!!.maxOfOrNull { it }
+        val lastPage = lastProblem?.page ?: 0
+        val numberOfPages = 100
+        val numberOfProblemsPerPage = 5
+        return (lastPage + 1 .. lastPage + numberOfPages).map { page ->
+            ((page - 1) * numberOfProblemsPerPage + 1 .. page * numberOfProblemsPerPage)
                 .map { it.toString() }
                 .map { number ->
                     Problem(bookId = bookId, page = page, mainNumber = number)

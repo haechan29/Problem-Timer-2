@@ -47,6 +47,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
@@ -551,12 +553,7 @@ fun ColumnScope.ProblemListTab(
     val problemsOnSelectedPage = problems!!
         .onBook(bookInfo!!.selectedBook?.id)
         .onPage(bookInfo!!.selectedPage)
-        .sortedWith(
-            compareBy(
-                { it.mainNumber.toInt() },
-                { if (it.isMainProblem()) 0 else it.subNumber!!.toInt() }
-            )
-        )
+        .sorted()
     val problemRecordListMapOnSelectedPage = problemRecordList!!
         .onBook(bookInfo!!.selectedBook)
         .onPage(bookInfo!!.selectedPage)
@@ -573,7 +570,8 @@ fun ColumnScope.ProblemListTabStateless(
     finishEditingProblem: () -> Unit,
     isGradeMode: () -> Boolean,
     context: Context = LocalContext.current,
-    selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel()
+    selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel(),
+    problemListViewModel: ProblemListViewModel = viewModel()
 ) {
     Box(
         modifier = Modifier
@@ -594,7 +592,8 @@ fun ColumnScope.ProblemListTabStateless(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 items(items = problemsOnSelectedPage) { problem ->
-                    val problemRecords = problemRecordListMapOnSelectedPage[problem.number] ?: emptyList()
+                    val problemRecords =
+                        problemRecordListMapOnSelectedPage[problem.number] ?: emptyList()
                     var color by remember { mutableStateOf(BackgroundGrey) }
                     var isShowingProblemRecords by remember { mutableStateOf(false) }
 
@@ -606,10 +605,19 @@ fun ColumnScope.ProblemListTabStateless(
                         finishEditingProblem,
                         isGradeMode,
                         color,
-                        { value: Color -> color = value},
+                        { value: Color -> color = value },
                         isShowingProblemRecords,
                         { value: Boolean -> isShowingProblemRecords = value }
                     )
+                    if (problemListViewModel.isLastProblem(problem)) {
+                        Button(
+                            modifier = Modifier.padding(10.dp),
+                            onClick = { problemListViewModel.addDefaultProblems(problem.bookId) },
+                            colors = ButtonDefaults.buttonColors(contentColor = Color.White)
+                        ) {
+                            Text("문제 추가하기")
+                        }
+                    }
                 }
             }
         }

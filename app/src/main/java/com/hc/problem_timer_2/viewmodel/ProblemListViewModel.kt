@@ -50,12 +50,12 @@ class ProblemListViewModel @Inject constructor(private val problemRepository: Pr
         number in problemsOnnSamePage.map { it.number }
     }
 
-    fun isLastProblem(problem: Problem) = problem.number == problems.value!!.maxOf { it }.number
+    private fun getLastProblem() = problems.value!!.maxOfOrNull { it }
+    fun isLastProblem(problem: Problem) = problem.number == getLastProblem()?.number
 
     private fun getDefaultProblems(bookId: Long): List<Problem> {
         if (bookId == 0L) throw UninitializedPropertyAccessException("book is not initialized")
-        val lastProblem = problems.value!!.maxOfOrNull { it }
-        val lastPage = lastProblem?.page ?: 0
+        val lastPage = getLastProblem()?.page ?: 0
         val numberOfPages = 100
         val numberOfProblemsPerPage = 5
         return (lastPage + 1 .. lastPage + numberOfPages).map { page ->

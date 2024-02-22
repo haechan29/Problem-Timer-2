@@ -326,8 +326,9 @@ fun PageTab(
     listState: LazyListState = rememberLazyListState()
 ) {
     val bookInfo by selectedBookInfoViewModel.selectedBookInfo.observeAsState()
+    val problems by problemListViewModel.problems.observeAsState()
     if (!bookInfo!!.isBookSelected()) return
-    val pages = problemListViewModel.problems.value!!
+    val pages = problems!!
         .filter { it.bookId == bookInfo!!.selectedBook!!.id }
         .map { it.page }
         .distinct()

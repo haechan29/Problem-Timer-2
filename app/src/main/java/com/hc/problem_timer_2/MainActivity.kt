@@ -2,6 +2,7 @@ package com.hc.problem_timer_2
 
 import android.content.Context
 import android.os.Bundle
+import android.widget.ImageButton
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -55,6 +57,7 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonColors
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -65,6 +68,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ComposableOpenTarget
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -83,13 +87,17 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.DefaultAlpha
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.WindowInfo
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -113,6 +121,9 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import androidx.compose.ui.text.font.lerp
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.em
 import com.hc.problem_timer_2.MainActivity.Companion.POSITIVE_INTEGER_MATCHER
 import com.hc.problem_timer_2.vo.Book
 import com.hc.problem_timer_2.vo.Problem
@@ -120,10 +131,12 @@ import com.hc.problem_timer_2.vo.ProblemRecord
 import com.hc.problem_timer_2.ui.theme.BackgroundGrey
 import com.hc.problem_timer_2.util.BaseAlertDialog
 import com.hc.problem_timer_2.util.BaseDialog
+import com.hc.problem_timer_2.util.TextWithoutPadding
 import com.hc.problem_timer_2.vo.Grade
 import com.hc.problem_timer_2.vo.Grade.*
 import com.hc.problem_timer_2.util.customToast
 import com.hc.problem_timer_2.util.getNow
+import com.hc.problem_timer_2.util.notosanskr
 import com.hc.problem_timer_2.viewmodel.SelectedBookInfoViewModel
 import com.hc.problem_timer_2.viewmodel.ProblemListViewModel
 import com.hc.problem_timer_2.vo.onBook
@@ -205,41 +218,75 @@ fun BookTabStateless(
     isDeleteBookBtnVisible: () -> Boolean,
     setVisibilityOfDeleteButton: (Boolean) -> Unit
 ) {
-    LazyRow(
+    Row(
         modifier = Modifier
-            .padding(all = 10.dp)
-            .fillMaxWidth()
-            .height(50.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            .wrapContentHeight()
+            .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        items(books.size + 1) { itemIndex ->
-            if (itemIndex in books.indices) {
-                val book = books[itemIndex]
+        TextWithoutPadding(
+            modifier = Modifier
+                .width(60.dp)
+                .wrapContentHeight(),
+            textAlign = TextAlign.Center,
+            text = "교재",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            fontFamily = notosanskr
+        )
+        Divider(
+            modifier = Modifier
+                .padding(start = 5.dp, end = 15.dp, top = 5.dp, bottom = 5.dp)
+                .width(1.dp)
+                .height(20.dp),
+            color = colorResource(id = R.color.black_200)
+        )
+        LazyRow(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            items(books.size) { itemIndex ->
                 BookButton(
-                    book,
+                    books[itemIndex],
                     getSelectedItemIndex() == itemIndex,
                     { setSelectedItemIndex(itemIndex) },
                     isDeleteBookBtnVisible,
                     { setVisibilityOfDeleteButton(!isDeleteBookBtnVisible()) }
                 )
-            } else {
-                IconButton(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .padding(all = 5.dp)
-                        .background(color = Primary, shape = CircleShape),
-                    onClick = { showAddBookDialog() },
-                    colors = IconButtonDefaults.iconButtonColors(
-                        contentColor = Color.White
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "add book",
-                    )
-                }
             }
+        }
+        Divider(
+            modifier = Modifier
+                .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
+                .width(1.dp)
+                .height(20.dp),
+            color = colorResource(id = R.color.black_200)
+        )
+
+        Row(
+            modifier = Modifier
+                .wrapContentWidth()
+                .height(30.dp)
+                .background(color = colorResource(R.color.black_100), shape = RoundedCornerShape(10.dp))
+                .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
+                .clickable { showAddBookDialog() },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextWithoutPadding(
+                text = "추가",
+                fontSize = 12.sp,
+                fontFamily = notosanskr,
+                fontWeight = FontWeight.Normal,
+                color = colorResource(id = R.color.black_600)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Icon(
+                modifier = Modifier.size(12.dp),
+                tint = Color.Black,
+                imageVector = Icons.Default.Add,
+                contentDescription = "add book",
+            )
         }
     }
 }
@@ -257,27 +304,28 @@ fun BookButton(
     Box(
         modifier = Modifier
             .wrapContentWidth()
-            .fillMaxHeight(),
+            .height(30.dp),
         contentAlignment = Alignment.TopEnd
     ) {
         Box(
             modifier = Modifier
-                .wrapContentWidth()
-                .fillMaxHeight()
                 .background(
-                    color = if (isSelected) Color.Black else Color.LightGray,
-                    shape = CircleShape
+                    color = if (isSelected) colorResource(R.color.black_100) else Color.Transparent,
+                    shape = RoundedCornerShape(10.dp)
                 )
-                .padding(horizontal = 15.dp)
-                .combinedClickable(
-                    onClick = selectBook,
-                    onLongClick = toggleVisibilityOfDeleteButton
-                ),
-            contentAlignment = Alignment.Center
+                .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
         ) {
-            Text(
+            TextWithoutPadding(
+                modifier = Modifier
+                    .combinedClickable(
+                        onClick = selectBook,
+                        onLongClick = toggleVisibilityOfDeleteButton
+                    ),
                 text = book.name,
-                color = if (isSelected) Color.White else Color.Black
+                fontFamily = notosanskr,
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
+                color = colorResource(id = R.color.black_400)
             )
         }
         if (isDeleteBookBtnVisible()) {

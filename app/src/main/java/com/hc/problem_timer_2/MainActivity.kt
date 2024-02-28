@@ -11,7 +11,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -48,8 +47,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
@@ -75,7 +74,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.focus.FocusRequester
@@ -87,6 +85,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.WindowInfo
 import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -97,7 +96,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hc.problem_timer_2.ui.theme.Primary
 import com.hc.problem_timer_2.ui.theme.ProblemTimer2Theme
-import com.hc.problem_timer_2.ui.theme.SecondPrimary
 import com.hc.problem_timer_2.util.TimberDebugTree
 import com.hc.problem_timer_2.util.added
 import com.hc.problem_timer_2.viewmodel.BookListViewModel
@@ -112,10 +110,10 @@ import com.hc.problem_timer_2.MainActivity.Companion.POSITIVE_INTEGER_MATCHER
 import com.hc.problem_timer_2.vo.Book
 import com.hc.problem_timer_2.vo.Problem
 import com.hc.problem_timer_2.vo.ProblemRecord
-import com.hc.problem_timer_2.ui.theme.BackgroundGrey
 import com.hc.problem_timer_2.util.BaseAlertDialog
 import com.hc.problem_timer_2.util.BaseDialog
 import com.hc.problem_timer_2.util.TextWithoutPadding
+import com.hc.problem_timer_2.util.applesdgothicneo
 import com.hc.problem_timer_2.vo.Grade
 import com.hc.problem_timer_2.vo.Grade.*
 import com.hc.problem_timer_2.util.customToast
@@ -163,7 +161,11 @@ fun TimerScreen(
     var problemToUpdate by remember { mutableStateOf<Problem?>(null) }
     var problemToEdit by remember { mutableStateOf<Problem?>(null) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .background(color = Color.White)
+            .fillMaxSize()
+    ) {
         BookTab { isShowingAddBookDialog = true }
         Divider(thickness = 1.dp, color = Color.LightGray)
         AnimatedVisibility(
@@ -179,8 +181,8 @@ fun TimerScreen(
                 Divider(thickness = 1.dp, color = Color.LightGray)
             }
         }
-        if (isShowingAddBookDialog) AddBookDialog { isShowingAddBookDialog = false }
         ProblemListTab({ isGradeMode }, { value: Problem -> problemToUpdate = value }, { value: Problem -> problemToEdit == value }, { problemToEdit = null })
+        if (isShowingAddBookDialog) AddBookDialog { isShowingAddBookDialog = false }
         if (problemToUpdate != null) UpdateProblemDialog(problemToUpdate!!, { problemToUpdate = null }, { problemToEdit = problemToUpdate })
     }
 }
@@ -240,7 +242,7 @@ fun BookTabStateless(
                 .padding(start = 5.dp, end = 15.dp, top = 5.dp, bottom = 5.dp)
                 .width(1.dp)
                 .height(20.dp),
-            color = colorResource(id = R.color.black_200)
+            color = colorResource(id = R.color.black_300)
         )
         LazyRow(
             modifier = Modifier.weight(1f),
@@ -262,7 +264,7 @@ fun BookTabStateless(
                 .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
                 .width(1.dp)
                 .height(20.dp),
-            color = colorResource(id = R.color.black_200)
+            color = colorResource(id = R.color.black_300)
         )
         AddBookButton(showAddBookDialog)
     }
@@ -287,7 +289,7 @@ fun BookButton(
         Box(
             modifier = Modifier
                 .background(
-                    color = if (isSelected) colorResource(R.color.black_100) else Color.Transparent,
+                    color = if (isSelected) colorResource(R.color.black_200) else Color.Transparent,
                     shape = RoundedCornerShape(10.dp)
                 )
                 .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
@@ -302,7 +304,7 @@ fun BookButton(
                 fontFamily = notosanskr,
                 fontWeight = FontWeight.Medium,
                 fontSize = 14.sp,
-                color = colorResource(id = R.color.black_400)
+                color = colorResource(id = R.color.black_500)
             )
         }
         if (isDeleteBookBtnVisible()) {
@@ -334,7 +336,7 @@ fun AddBookButton(showAddBookDialog: () -> Unit) {
         modifier = Modifier
             .wrapContentWidth()
             .height(30.dp)
-            .background(color = colorResource(R.color.black_100), shape = RoundedCornerShape(10.dp))
+            .background(color = colorResource(R.color.black_200), shape = RoundedCornerShape(10.dp))
             .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
             .clickable { showAddBookDialog() },
         verticalAlignment = Alignment.CenterVertically
@@ -344,7 +346,7 @@ fun AddBookButton(showAddBookDialog: () -> Unit) {
             fontSize = 12.sp,
             fontFamily = notosanskr,
             fontWeight = FontWeight.Normal,
-            color = colorResource(id = R.color.black_600)
+            color = colorResource(id = R.color.black_700)
         )
         Spacer(modifier = Modifier.width(4.dp))
         Icon(
@@ -495,7 +497,7 @@ fun PageTab(
                 .padding(start = 5.dp, end = 15.dp, top = 5.dp, bottom = 5.dp)
                 .width(1.dp)
                 .height(20.dp),
-            color = colorResource(id = R.color.black_200)
+            color = colorResource(id = R.color.black_300)
         )
         LazyRow(
             modifier = Modifier.weight(1f),
@@ -516,7 +518,7 @@ fun PageTab(
                 .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
                 .width(1.dp)
                 .height(20.dp),
-            color = colorResource(id = R.color.black_200)
+            color = colorResource(id = R.color.black_300)
         )
         AddPageButton {}
     }
@@ -537,7 +539,7 @@ fun PageButton(
         Box(
             modifier = Modifier
                 .background(
-                    color = if (isSelected) colorResource(R.color.black_100) else Color.Transparent,
+                    color = if (isSelected) colorResource(R.color.black_200) else Color.Transparent,
                     shape = RoundedCornerShape(10.dp)
                 )
                 .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
@@ -548,7 +550,7 @@ fun PageButton(
                 fontFamily = notosanskr,
                 fontWeight = FontWeight.Medium,
                 fontSize = 14.sp,
-                color = colorResource(id = R.color.black_400)
+                color = colorResource(id = R.color.black_500)
             )
         }
     }
@@ -560,7 +562,7 @@ fun AddPageButton(addPages: () -> Unit) {
         modifier = Modifier
             .wrapContentWidth()
             .height(30.dp)
-            .background(color = colorResource(R.color.black_100), shape = RoundedCornerShape(10.dp))
+            .background(color = colorResource(R.color.black_200), shape = RoundedCornerShape(10.dp))
             .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
             .clickable { addPages() },
         verticalAlignment = Alignment.CenterVertically
@@ -570,7 +572,7 @@ fun AddPageButton(addPages: () -> Unit) {
             fontSize = 12.sp,
             fontFamily = notosanskr,
             fontWeight = FontWeight.Normal,
-            color = colorResource(id = R.color.black_600)
+            color = colorResource(id = R.color.black_700)
         )
         Spacer(modifier = Modifier.width(4.dp))
         Icon(
@@ -594,77 +596,135 @@ fun ColumnScope.ProblemListTab(
 ) {
     val problems by problemListViewModel.problems.observeAsState()
     val problemRecordList by problemRecordListViewModel.problemRecordListOnSelectedPage.observeAsState()
-    val bookInfo by selectedBookInfoViewModel.selectedBookInfo.observeAsState()
+    val selectedBookInfo by selectedBookInfoViewModel.selectedBookInfo.observeAsState()
     val problemsOnSelectedPage = problems!!
-        .onBook(bookInfo!!.selectedBook?.id)
-        .onPage(bookInfo!!.selectedPage)
+        .onBook(selectedBookInfo!!.selectedBook?.id)
+        .onPage(selectedBookInfo!!.selectedPage)
         .sorted()
     val problemRecordListMapOnSelectedPage = problemRecordList!!
-        .onBook(bookInfo!!.selectedBook)
-        .onPage(bookInfo!!.selectedPage)
+        .onBook(selectedBookInfo!!.selectedBook)
+        .onPage(selectedBookInfo!!.selectedPage)
         .toProblemRecordListMap()
-    ProblemListTabStateless(problemsOnSelectedPage, problemRecordListMapOnSelectedPage, setProblemToUpdate, isProblemEditing, finishEditingProblem, isGradeMode)
+
+    ProblemListTabStateless(
+        selectedBookInfo!!.isBookSelected(),
+        problemsOnSelectedPage,
+        problemRecordListMapOnSelectedPage,
+        setProblemToUpdate,
+        isProblemEditing,
+        finishEditingProblem,
+        isGradeMode
+    )
 }
 
 @Composable
 fun ColumnScope.ProblemListTabStateless(
+    isBookSelected: Boolean,
     problemsOnSelectedPage: List<Problem>,
     problemRecordListMapOnSelectedPage: Map<String, List<ProblemRecord>>,
     setProblemToUpdate: (Problem) -> Unit,
     isProblemEditing: (Problem) -> Boolean,
     finishEditingProblem: () -> Unit,
     isGradeMode: () -> Boolean,
-    context: Context = LocalContext.current,
-    selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel(),
-    problemListViewModel: ProblemListViewModel = viewModel()
+    context: Context = LocalContext.current
 ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .weight(1f),
+            .weight(1f)
+            .padding(vertical = 15.dp, horizontal = 10.dp),
         contentAlignment = Alignment.Center
     ) {
-        if (!selectedBookInfoViewModel.selectedBookInfo.value!!.isBookSelected()) {
+        if (!isBookSelected) {
             Text(
                 text = context.getString(R.string.select_book),
                 fontSize = 12.sp
             )
         } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(all = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                items(items = problemsOnSelectedPage) { problem ->
-                    val problemRecords =
-                        problemRecordListMapOnSelectedPage[problem.number] ?: emptyList()
-                    var color by remember { mutableStateOf(BackgroundGrey) }
-                    var isShowingProblemRecords by remember { mutableStateOf(false) }
-
-                    ProblemAndProblemRecordTabStateless(
-                        problem,
-                        problemRecords,
-                        { setProblemToUpdate(problem) },
-                        { isProblemEditing(problem) },
-                        finishEditingProblem,
-                        isGradeMode,
-                        color,
-                        { value: Color -> color = value },
-                        isShowingProblemRecords,
-                        { value: Boolean -> isShowingProblemRecords = value }
-                    )
-                    if (problemListViewModel.isLastProblem(problem)) {
-                        Button(
-                            modifier = Modifier.padding(10.dp),
-                            onClick = { problemListViewModel.addDefaultProblems(problem.bookId) },
-                            colors = ButtonDefaults.buttonColors(contentColor = Color.White)
-                        ) {
-                            Text("문제 추가하기")
-                        }
-                    }
-                }
+            Column {
+                ProblemListHeaderTab()
+                ProblemListBodyTab(
+                    problemsOnSelectedPage,
+                    problemRecordListMapOnSelectedPage,
+                    setProblemToUpdate,
+                    isProblemEditing,
+                    finishEditingProblem,
+                    isGradeMode
+                )
             }
+        }
+    }
+}
+
+@Composable
+fun ProblemListHeaderTab() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        TextWithoutPadding(
+            modifier = Modifier.wrapContentSize(),
+            textAlign = TextAlign.Center,
+            text = "문제 풀기",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = notosanskr
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        Row(
+            modifier = Modifier.wrapContentSize(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextWithoutPadding(
+                modifier = Modifier.wrapContentSize(),
+                textAlign = TextAlign.Center,
+                text = "채점하기",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Normal,
+                fontFamily = notosanskr
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Icon(
+                modifier = Modifier.size(12.dp),
+                imageVector = Icons.Default.KeyboardArrowRight,
+                contentDescription = "grade",
+            )
+        }
+    }
+}
+
+@Composable
+fun ProblemListBodyTab(
+    problemsOnSelectedPage: List<Problem>,
+    problemRecordListMapOnSelectedPage: Map<String, List<ProblemRecord>>,
+    setProblemToUpdate: (Problem) -> Unit,
+    isProblemEditing: (Problem) -> Boolean,
+    finishEditingProblem: () -> Unit,
+    isGradeMode: () -> Boolean
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(vertical = 15.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        items(items = problemsOnSelectedPage) { problem ->
+            val problemRecords =
+                problemRecordListMapOnSelectedPage[problem.number] ?: emptyList()
+            var isShowingProblemRecords by remember { mutableStateOf(false) }
+
+            ProblemAndProblemRecordTabStateless(
+                problem,
+                problemRecords,
+                { setProblemToUpdate(problem) },
+                { isProblemEditing(problem) },
+                finishEditingProblem,
+                isGradeMode,
+                { isShowingProblemRecords },
+                { value: Boolean -> isShowingProblemRecords = value }
+            )
         }
     }
 }
@@ -677,47 +737,193 @@ fun ProblemAndProblemRecordTabStateless(
     isProblemEditing: () -> Boolean,
     finishEditingProblem: () -> Unit,
     isGradeMode: () -> Boolean,
-    color: Color,
-    setColor: (Color) -> Unit,
-    isShowingProblemRecords: Boolean,
+    isShowingProblemRecords: () -> Boolean,
     setShowingProblemRecords: (Boolean) -> Unit
 ) {
+    LaunchedEffect(key1 = isGradeMode()) { setShowingProblemRecords(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (!isGradeMode()) BackgroundGrey else color
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 5.dp,
         )
     ) {
         Column(
             modifier = Modifier
+                .background(color = Color.White)
+                .padding(all = 20.dp)
                 .fillMaxWidth()
                 .wrapContentHeight()
-                .padding(10.dp)
         ) {
-            LaunchedEffect(key1 = isGradeMode()) { setShowingProblemRecords(false) }
-
-            ProblemTab(
-                problem,
-                problemRecords,
-                updateProblem,
-                isProblemEditing,
-                finishEditingProblem,
-                isGradeMode,
-                isShowingProblemRecords,
-                { setShowingProblemRecords(!isShowingProblemRecords) },
-                setColor
-            )
+            ProblemContentTab(problem)
             AnimatedVisibility(
-                visible = isShowingProblemRecords,
+                visible = isShowingProblemRecords(),
                 enter = expandVertically(expandFrom = Alignment.Top),
                 exit = shrinkVertically(shrinkTowards = Alignment.Top)
             ) {
-                Spacer(modifier = Modifier.height(10.dp))
-                ProblemRecordListTab(problemRecords)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                ) {
+                    Spacer(modifier = Modifier.height(20.dp))
+                    ProblemRecordListTab(problemRecords)
+                }
             }
+            Spacer(modifier = Modifier.height(15.dp))
+            Divider(
+                modifier = Modifier
+                    .padding(horizontal = 5.dp)
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(color = colorResource(id = R.color.black_300))
+            )
+            Spacer(modifier = Modifier.height(15.dp))
+            ProblemRecordViewMoreTab(
+                isShowingProblemRecords,
+                { setShowingProblemRecords(!isShowingProblemRecords()) }
+            )
+//            ProblemTab(
+//                problem,
+//                problemRecords,
+//                updateProblem,
+//                isProblemEditing,
+//                finishEditingProblem,
+//                isGradeMode,
+//                isShowingProblemRecords,
+//                { setShowingProblemRecords(!isShowingProblemRecords) }
+//            )
+//            AnimatedVisibility(
+//                visible = isShowingProblemRecords,
+//                enter = expandVertically(expandFrom = Alignment.Top),
+//                exit = shrinkVertically(shrinkTowards = Alignment.Top)
+//            ) {
+//                Spacer(modifier = Modifier.height(10.dp))
+//                ProblemRecordListTab(problemRecords)
+//            }
         }
+    }
+}
+
+@Composable
+fun ProblemContentTab(problem: Problem) {
+    var isTimerRunning by remember { mutableStateOf(false) }
+    var currentTimeRecord by remember { mutableIntStateOf(0) }
+    var currentGrade: Grade by remember { mutableStateOf(Unranked) }
+
+    LaunchedEffect(key1 = isTimerRunning) {
+        while (isTimerRunning) {
+            delay(100)
+            currentTimeRecord += 100
+        }
+    }
+
+    Row(
+        modifier = Modifier
+            .background(color = Color.White)
+            .padding(horizontal = 10.dp)
+            .fillMaxWidth()
+            .wrapContentHeight(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(vertical = 5.dp)
+                .size(40.dp)
+                .background(color = currentGrade.color, shape = RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            TextWithoutPadding(
+                modifier = Modifier.wrapContentSize(),
+                textAlign = TextAlign.Center,
+                text = problem.number,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = notosanskr,
+                color = Color.White,
+                maxLines = 1
+            )
+        }
+        Spacer(Modifier.width(24.dp))
+        TextWithoutPadding(
+            modifier = Modifier.wrapContentSize(),
+            textAlign = TextAlign.Center,
+            text = toTimeFormat(currentTimeRecord),
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = applesdgothicneo,
+            maxLines = 1
+        )
+        Spacer(Modifier.weight(1f))
+        Row(
+            modifier = Modifier
+                .background(
+                    color = colorResource(id = R.color.black_200),
+                    shape = RoundedCornerShape(10.dp)
+                )
+                .clickable { isTimerRunning = !isTimerRunning }
+                .padding(horizontal = 15.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextWithoutPadding(
+                modifier = Modifier.wrapContentSize(),
+                textAlign = TextAlign.Center,
+                text = if (isTimerRunning) "타이머 정지" else "타이머 시작",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = notosanskr,
+                maxLines = 1,
+                color = colorResource(id = R.color.black_500)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                modifier = Modifier.size(20.dp),
+                painter = painterResource(id = R.drawable.clock_24px),
+                contentDescription = "record time",
+            )
+        }
+    }
+}
+
+@Composable
+fun ProblemRecordViewMoreTab(
+    isShowingProblemRecords: () -> Boolean,
+    toggleVisibilityOfProblemRecords: () -> Unit
+) {
+    val viewMoreIconRotationZ by animateFloatAsState(
+        targetValue = if (!isShowingProblemRecords()) 0f else 180f,
+        animationSpec = tween(200),
+        label = "rotationZ for view more icon"
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight()
+            .clickable { toggleVisibilityOfProblemRecords() },
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        TextWithoutPadding(
+            modifier = Modifier.wrapContentSize(),
+            textAlign = TextAlign.Center,
+            text = if (isShowingProblemRecords()) "접기" else "내 기록 보기",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            fontFamily = notosanskr
+        )
+        Spacer(modifier = Modifier.width(5.dp))
+        Icon(
+            imageVector = Icons.Default.KeyboardArrowDown,
+            contentDescription = "show problem records",
+            modifier = Modifier
+                .size(16.dp)
+                .graphicsLayer {
+                    rotationZ = viewMoreIconRotationZ
+                }
+        )
     }
 }
 
@@ -730,8 +936,7 @@ fun ProblemTab(
     finishEditingProblem: () -> Unit,
     isGradeMode: () -> Boolean,
     isVisible: Boolean,
-    toggleVisibility: () -> Unit,
-    setColor: (Color) -> Unit
+    toggleVisibility: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -741,12 +946,11 @@ fun ProblemTab(
         verticalAlignment = Alignment.CenterVertically
     ) {
         ProblemNumberTab(problem, problemRecords, updateProblem, isProblemEditing, finishEditingProblem, isGradeMode)
-        ProblemTimerTab(problem, problemRecords, isGradeMode, setColor)
+        ProblemTimerTab(problem, problemRecords, isGradeMode)
         ViewMoreButton(isVisible, toggleVisibility)
     }
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun ProblemNumberTab(
     problem: Problem,
@@ -773,12 +977,7 @@ fun ColumnScope.ProblemNumberHeaderTab(problemRecords: List<ProblemRecord>) {
     ) {
         Row(modifier = Modifier.wrapContentSize()) {
             problemRecords.reversed().forEach { problemRecord ->
-                Text(
-                    modifier = Modifier.wrapContentSize(),
-                    text = problemRecord.grade.text,
-                    textAlign = TextAlign.Center,
-                    fontSize = 10.sp
-                )
+
             }
         }
     }
@@ -860,7 +1059,6 @@ fun RowScope.ProblemTimerTab(
     problem: Problem,
     problemRecords: List<ProblemRecord>,
     isGradeMode: () -> Boolean,
-    setColor: (Color) -> Unit,
     selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel(),
     problemRecordListViewModel: ProblemRecordListViewModel = viewModel()
 ) {
@@ -890,9 +1088,6 @@ fun RowScope.ProblemTimerTab(
                 )
             )
         }
-    }
-    LaunchedEffect(key1 = currentGrade) {
-        if (isGradeMode()) setColor(currentGrade.color)
     }
 
     ProblemTimerTabStateless(
@@ -948,14 +1143,6 @@ fun RowScope.ProblemTimerTabStateless(
                 textAlign = TextAlign.Center
             )
         } else {
-            Text(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight(),
-                text = if (getCurrentGrade() == Unranked) "탭해서 채점하기" else getCurrentGrade().text,
-                fontSize = 14.sp,
-                textAlign = TextAlign.Center
-            )
         }
     }
 }
@@ -985,7 +1172,11 @@ fun ProblemRecordListTab(problemRecords: List<ProblemRecord>) {
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
-            .background(color = SecondPrimary, shape = RoundedCornerShape(10.dp))
+            .background(
+                color = colorResource(id = R.color.black_100),
+                shape = RoundedCornerShape(10.dp)
+            )
+            .padding(horizontal = 30.dp, vertical = 15.dp)
     ) {
         if (problemRecords.isEmpty()) {
             Text(
@@ -1002,29 +1193,40 @@ fun ProblemRecordListTab(problemRecords: List<ProblemRecord>) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp),
+                        .wrapContentHeight(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
+                    TextWithoutPadding(
+                        modifier = Modifier
+                            .width(40.dp)
+                            .wrapContentHeight(),
+                        textAlign = TextAlign.Center,
+                        text = with (problemRecord.solvedAt) { "$monthNumber/$dayOfMonth" },
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Normal,
+                        fontFamily = notosanskr,
+                        color = colorResource(id = R.color.black_400)
+                    )
+                    TextWithoutPadding(
                         modifier = Modifier
                             .weight(1f)
                             .wrapContentHeight(),
-                        text = with(problemRecord.solvedAt) { "$monthNumber/$dayOfMonth" },
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        text = toTimeFormat(problemRecord.timeRecord),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Normal,
+                        fontFamily = notosanskr
                     )
-                    Text(
+                    TextWithoutPadding(
                         modifier = Modifier
-                            .weight(2f)
+                            .width(60.dp)
                             .wrapContentHeight(),
-                        text = toSimpleTimeFormat(problemRecord.timeRecord),
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        modifier = Modifier
-                            .weight(1f)
-                            .wrapContentHeight(),
+                        textAlign = TextAlign.Center,
                         text = problemRecord.grade.text,
-                        textAlign = TextAlign.Center
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        fontFamily = notosanskr,
+                        color = problemRecord.grade.color
                     )
                 }
             }

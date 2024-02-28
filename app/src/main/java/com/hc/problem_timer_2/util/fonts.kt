@@ -17,3 +17,15 @@ val notosanskr = FontFamily(
     Font(R.font.notosanskr_extrabold,    FontWeight.ExtraBold,   FontStyle.Normal),
     Font(R.font.notosanskr_black,        FontWeight.Black,       FontStyle.Normal)
 )
+
+val applesdgothicneo = FontFamily(
+    Font(R.font.applesdgothicneo_thin,         FontWeight.Thin,        FontStyle.Normal),
+    Font(R.font.applesdgothicneo_ultralight,   FontWeight.ExtraLight,  FontStyle.Normal),
+    Font(R.font.applesdgothicneo_light,        FontWeight.Light,       FontStyle.Normal),
+    Font(R.font.applesdgothicneo_regular,      FontWeight.Normal,      FontStyle.Normal),
+    Font(R.font.applesdgothicneo_medium,       FontWeight.Medium,      FontStyle.Normal),
+    Font(R.font.applesdgothicneo_semibold,     FontWeight.SemiBold,    FontStyle.Normal),
+    Font(R.font.applesdgothicneo_bold,         FontWeight.Bold,        FontStyle.Normal),
+    Font(R.font.applesdgothicneo_extrabold,    FontWeight.ExtraBold,   FontStyle.Normal),
+    Font(R.font.applesdgothicneo_heavy,        FontWeight.Black,       FontStyle.Normal)
+)

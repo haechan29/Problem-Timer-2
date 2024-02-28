@@ -33,3 +33,11 @@ fun <E> List<E>.updated(index: Int, e: E) = this.copy().apply { set(index, e) }
 fun <E> List<E>.copy() = mutableListOf<E>().apply { addAll(this@copy) }
 
 fun getNow() = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+
+fun <R> Any.tryOrNull(f: () -> R): R? {
+    return try {
+        f()
+    } catch (e: Exception) {
+        null
+    }
+}

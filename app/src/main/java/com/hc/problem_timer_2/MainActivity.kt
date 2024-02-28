@@ -2,7 +2,6 @@ package com.hc.problem_timer_2
 
 import android.content.Context
 import android.os.Bundle
-import android.widget.ImageButton
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -13,7 +12,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,7 +22,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -57,9 +54,6 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonColors
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -68,7 +62,6 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.ComposableOpenTarget
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -85,19 +78,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.DefaultAlpha
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.WindowInfo
 import androidx.compose.ui.res.colorResource
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -105,7 +93,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.hc.problem_timer_2.MainActivity.Companion.PAGE_ITEM_SIZE
 import com.hc.problem_timer_2.ui.theme.Primary
 import com.hc.problem_timer_2.ui.theme.ProblemTimer2Theme
 import com.hc.problem_timer_2.ui.theme.SecondPrimary
@@ -121,9 +108,6 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import androidx.compose.ui.text.font.lerp
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.em
 import com.hc.problem_timer_2.MainActivity.Companion.POSITIVE_INTEGER_MATCHER
 import com.hc.problem_timer_2.vo.Book
 import com.hc.problem_timer_2.vo.Problem
@@ -177,7 +161,8 @@ fun TimerScreen() {
     Column(modifier = Modifier.fillMaxSize()) {
         BookTab { isShowingAddBookDialog = true }
         Divider(thickness = 1.dp, color = Color.LightGray)
-        PageAndGradeTab({ isGradeMode }, { value: Boolean -> isGradeMode = value })
+//        PageAndGradeTab({ isGradeMode }, { value: Boolean -> isGradeMode = value })
+        PageTab()
         Divider(thickness = 1.dp, color = Color.LightGray)
         if (isShowingAddBookDialog) AddBookDialog { isShowingAddBookDialog = false }
         ProblemListTab({ isGradeMode }, { value: Problem -> problemToUpdate = value }, { value: Problem -> problemToEdit == value }, { problemToEdit = null })
@@ -263,31 +248,7 @@ fun BookTabStateless(
                 .height(20.dp),
             color = colorResource(id = R.color.black_200)
         )
-
-        Row(
-            modifier = Modifier
-                .wrapContentWidth()
-                .height(30.dp)
-                .background(color = colorResource(R.color.black_100), shape = RoundedCornerShape(10.dp))
-                .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
-                .clickable { showAddBookDialog() },
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextWithoutPadding(
-                text = "추가",
-                fontSize = 12.sp,
-                fontFamily = notosanskr,
-                fontWeight = FontWeight.Normal,
-                color = colorResource(id = R.color.black_600)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Icon(
-                modifier = Modifier.size(12.dp),
-                tint = Color.Black,
-                imageVector = Icons.Default.Add,
-                contentDescription = "add book",
-            )
-        }
+        AddBookButton(showAddBookDialog)
     }
 }
 
@@ -352,143 +313,72 @@ fun BookButton(
 }
 
 @Composable
-fun PageAndGradeTab(isGradeMode: () -> Boolean, setGradeMode: (Boolean) -> Unit) {
-    Row(
-        modifier = Modifier
-            .padding(start = 5.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
-            .fillMaxWidth()
-            .height(40.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        PageTab()
-        Spacer(modifier = Modifier.weight(1f))
-        GradeTab(isGradeMode, setGradeMode)
-    }
-}
-
-@Composable
-fun PageTab(
-    selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel(),
-    problemListViewModel: ProblemListViewModel = viewModel(),
-    scope: CoroutineScope = rememberCoroutineScope(),
-    listState: LazyListState = rememberLazyListState()
-) {
-    val bookInfo by selectedBookInfoViewModel.selectedBookInfo.observeAsState()
-    val problems by problemListViewModel.problems.observeAsState()
-    if (!bookInfo!!.isBookSelected()) return
-    val pages = problems!!
-        .filter { it.bookId == bookInfo!!.selectedBook!!.id }
-        .map { it.page }
-        .distinct()
-    if (pages.isEmpty()) problemListViewModel.addDefaultProblems(bookInfo!!.selectedBook!!.id)
-    val selectedPage = bookInfo!!.selectedPage
-
-    LaunchedEffect(key1 = selectedPage) {
-        if (!pages.contains(selectedPage)) return@LaunchedEffect
-        val index = pages.indexOf(selectedPage)
-        scope.launch { listState.animateScrollToItem(index) }
-    }
-
-    PageTabStateless(pages, selectedPage, listState)
-}
-
-@Composable
-fun PageTabStateless(
-    pages: List<Int>,
-    selectedPage: Int?,
-    listState: LazyListState,
-    selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel(),
-    context: Context = LocalContext.current
-) {
+fun AddBookButton(showAddBookDialog: () -> Unit) {
     Row(
         modifier = Modifier
             .wrapContentWidth()
-            .fillMaxHeight(),
+            .height(30.dp)
+            .background(color = colorResource(R.color.black_100), shape = RoundedCornerShape(10.dp))
+            .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
+            .clickable { showAddBookDialog() },
         verticalAlignment = Alignment.CenterVertically
     ) {
-        PageButton(true) { setPageOrAlert(pages, selectedPage!! - 1, selectedBookInfoViewModel, context) }
-        PageBox(pages, listState, !selectedBookInfoViewModel.selectedBookInfo.value!!.isBookSelected() )
-        PageButton(false) { setPageOrAlert(pages, selectedPage!! + 1, selectedBookInfoViewModel, context) }
-    }
-}
-
-@Composable
-fun PageButton(isBeforeButton: Boolean, onClick: () -> Unit) {
-    IconButton(
-        modifier = Modifier
-            .wrapContentWidth()
-            .fillMaxHeight(),
-        onClick = onClick
-    ) {
+        TextWithoutPadding(
+            text = "추가",
+            fontSize = 12.sp,
+            fontFamily = notosanskr,
+            fontWeight = FontWeight.Normal,
+            color = colorResource(id = R.color.black_600)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
         Icon(
-            painter = painterResource(
-                if (isBeforeButton) R.drawable.navigate_before_24px
-                else R.drawable.navigate_next_24px
-            ),
-            contentDescription = null
+            modifier = Modifier.size(12.dp),
+            tint = Color.Black,
+            imageVector = Icons.Default.Add,
+            contentDescription = "add book",
         )
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PageBox(
-    pages: List<Int>?,
-    listState: LazyListState,
-    isBookSelected: Boolean,
-    selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel(),
-    focusManager: FocusManager = LocalFocusManager.current,
-    context: Context = LocalContext.current
+fun AddBookDialog(
+    bookListViewModel: BookListViewModel = viewModel(),
+    hideDialog: () -> Unit
 ) {
-    var pageInput by remember { mutableStateOf("") }
-    var isPageBoxFocused by remember { mutableStateOf(false) }
-
-    LazyRow(
-        modifier = Modifier
-            .width(PAGE_ITEM_SIZE.dp * 1.5f)
-            .fillMaxHeight()
-            .border(width = 1.dp, color = Color.Black, shape = RoundedCornerShape(5.dp))
-            .clickable {
-                if (!isBookSelected) customToast(
-                    context.getString(R.string.select_book),
-                    context
-                )
-            },
-        verticalAlignment = Alignment.CenterVertically,
-        state = listState,
-        contentPadding = PaddingValues(horizontal = 10.dp),
-        userScrollEnabled = false
-    ) {
-        if (pages == null) return@LazyRow
-        items(pages.size) { itemIdx ->
-            BasicTextField(
+    var bookName by remember { mutableStateOf("") }
+    BaseAlertDialog(
+        title = "추가할 교재를 입력해주세요",
+        confirmText = "교재 추가",
+        dismissText = "취소",
+        text = {
+            OutlinedTextField(
                 modifier = Modifier
-                    .width(PAGE_ITEM_SIZE.dp)
-                    .fillMaxHeight()
-                    .wrapContentHeight()
-                    .onFocusChanged { isPageBoxFocused = it.isFocused },
-                value = pageInput,
-                onValueChange = { pageInput = it },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                    .fillMaxWidth()
+                    .height(60.dp),
+                value = bookName,
+                onValueChange = { bookName = it },
+                textStyle = TextStyle(fontSize = 14.sp),
+                label = {
+                    Text(
+                        text = "교재 이름",
+                        fontSize = 14.sp,
+                        color = Color.Gray
+                    )
+                },
+                colors = TextFieldDefaults.outlinedTextFieldColors(
+                    focusedBorderColor = Primary
+                ),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = {
-                    focusManager.clearFocus()
-                    setPage(pageInput, selectedBookInfoViewModel, pages) { notifyPageOutOfRange(context, pages) }
-                    pageInput = ""
+                    bookListViewModel.addBook(Book(name = bookName))
+                    hideDialog()
                 }),
-                textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center),
-                singleLine = true,
-                maxLines = 1,
-                decorationBox = { innerTextField ->
-                    if (!isPageBoxFocused) {
-                        Text(
-                            text = "${pages[itemIdx]}",
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                    innerTextField()
-                }
             )
-        }
-    }
+        },
+        onConfirm = { bookListViewModel.addBook(Book(name = bookName)) },
+        hideDialog = hideDialog
+    )
 }
 
 @Composable
@@ -545,45 +435,135 @@ fun GradeTab(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddBookDialog(
-    bookListViewModel: BookListViewModel = viewModel(),
-    hideDialog: () -> Unit
+fun PageTab(
+    selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel(),
+    problemListViewModel: ProblemListViewModel = viewModel(),
+    scope: CoroutineScope = rememberCoroutineScope(),
+    listState: LazyListState = rememberLazyListState()
 ) {
-    var bookName by remember { mutableStateOf("") }
-    BaseAlertDialog(
-        title = "추가할 교재를 입력해주세요",
-        confirmText = "교재 추가",
-        dismissText = "취소",
-        text = {
-            OutlinedTextField(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp),
-                value = bookName,
-                onValueChange = { bookName = it },
-                textStyle = TextStyle(fontSize = 14.sp),
-                label = {
-                    Text(
-                        text = "교재 이름",
-                        fontSize = 14.sp,
-                        color = Color.Gray
-                    )
-                },
-                colors = TextFieldDefaults.outlinedTextFieldColors(
-                    focusedBorderColor = Primary
-                ),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = {
-                    bookListViewModel.addBook(Book(name = bookName))
-                    hideDialog()
-                }),
+    val bookInfo by selectedBookInfoViewModel.selectedBookInfo.observeAsState()
+    val problems by problemListViewModel.problems.observeAsState()
+    if (!bookInfo!!.isBookSelected()) return
+    val pages = problems!!
+        .filter { it.bookId == bookInfo!!.selectedBook!!.id }
+        .map { it.page }
+        .distinct()
+    if (pages.isEmpty()) problemListViewModel.addDefaultProblems(bookInfo!!.selectedBook!!.id)
+    val selectedPage = bookInfo!!.selectedPage
+
+    LaunchedEffect(key1 = selectedPage) {
+        if (!pages.contains(selectedPage)) return@LaunchedEffect
+        val index = pages.indexOf(selectedPage)
+        scope.launch { listState.animateScrollToItem(index) }
+    }
+
+    Row(
+        modifier = Modifier
+            .wrapContentHeight()
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        TextWithoutPadding(
+            modifier = Modifier
+                .width(60.dp)
+                .wrapContentHeight(),
+            textAlign = TextAlign.Center,
+            text = "페이지",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            fontFamily = notosanskr
+        )
+        Divider(
+            modifier = Modifier
+                .padding(start = 5.dp, end = 15.dp, top = 5.dp, bottom = 5.dp)
+                .width(1.dp)
+                .height(20.dp),
+            color = colorResource(id = R.color.black_200)
+        )
+        LazyRow(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            state = listState
+        ) {
+            items(pages) { page ->
+                MyPageButton(
+                    selectedPage == page,
+                    { selectedBookInfoViewModel.select(page) },
+                    page
+                )
+            }
+        }
+        Divider(
+            modifier = Modifier
+                .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
+                .width(1.dp)
+                .height(20.dp),
+            color = colorResource(id = R.color.black_200)
+        )
+        AddPageButton {}
+    }
+}
+
+@Composable
+fun MyPageButton(
+    isSelected: Boolean,
+    selectPage: () -> Unit,
+    page: Int
+) {
+    Box(
+        modifier = Modifier
+            .wrapContentWidth()
+            .height(30.dp),
+        contentAlignment = Alignment.TopEnd
+    ) {
+        Box(
+            modifier = Modifier
+                .background(
+                    color = if (isSelected) colorResource(R.color.black_100) else Color.Transparent,
+                    shape = RoundedCornerShape(10.dp)
+                )
+                .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
+        ) {
+            TextWithoutPadding(
+                modifier = Modifier.clickable { selectPage() },
+                text = "$page",
+                fontFamily = notosanskr,
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
+                color = colorResource(id = R.color.black_400)
             )
-        },
-        onConfirm = { bookListViewModel.addBook(Book(name = bookName)) },
-        hideDialog = hideDialog
-    )
+        }
+    }
+}
+
+@Composable
+fun AddPageButton(addPages: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .wrapContentWidth()
+            .height(30.dp)
+            .background(color = colorResource(R.color.black_100), shape = RoundedCornerShape(10.dp))
+            .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
+            .clickable { addPages() },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        TextWithoutPadding(
+            text = "추가",
+            fontSize = 12.sp,
+            fontFamily = notosanskr,
+            fontWeight = FontWeight.Normal,
+            color = colorResource(id = R.color.black_600)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Icon(
+            modifier = Modifier.size(12.dp),
+            tint = Color.Black,
+            imageVector = Icons.Default.Add,
+            contentDescription = "add pages",
+        )
+    }
 }
 
 @Composable
@@ -1114,36 +1094,6 @@ fun ComponentActivity.getDataFromLocalDB() {
     val problemRecordListViewModel: ProblemRecordListViewModel by viewModels()
     problemRecordListViewModel.getProblemRecords()
 }
-
-fun setPageOrAlert(
-    pages: List<Int>,
-    page: Int,
-    selectedBookInfoViewModel: SelectedBookInfoViewModel,
-    context: Context
-) {
-    if (!selectedBookInfoViewModel.selectedBookInfo.value!!.isBookSelected()) {
-        customToast(context.getString(R.string.select_book), context)
-        return
-    }
-    setPage("$page", selectedBookInfoViewModel, pages) {
-        notifyPageOutOfRange(context, pages)
-    }
-}
-
-fun setPage(pageString: String, selectedBookInfoViewModel: SelectedBookInfoViewModel, pages: List<Int>, alert: () -> Unit) =
-    try {
-        val page = pageString.toInt()
-        invokeAndBlock(SET_PAGE, 500) {
-            if (page !in pages) throw IndexOutOfBoundsException("page out of pages // " +
-                    "page: $page, pages: ${pages.first()} - ${pages.last()}")
-            selectedBookInfoViewModel.select(page)
-        }
-    } catch(e: Exception) {
-        alert()
-    }
-
-fun notifyPageOutOfRange(context: Context, pages: List<Int>)
-        = customToast("${pages.first()}과 ${pages.last()} 사이의 값을 입력해주세요", context)
 
 fun List<ProblemRecord>.toProblemRecordListMap() =
     fold(mutableMapOf<String, List<ProblemRecord>>()) { map, problemRecord ->

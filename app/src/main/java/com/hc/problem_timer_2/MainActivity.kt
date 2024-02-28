@@ -10,6 +10,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -96,8 +98,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hc.problem_timer_2.ui.theme.Primary
 import com.hc.problem_timer_2.ui.theme.ProblemTimer2Theme
 import com.hc.problem_timer_2.ui.theme.SecondPrimary
-import com.hc.problem_timer_2.util.FlagController.invokeAndBlock
-import com.hc.problem_timer_2.util.Flag.*
 import com.hc.problem_timer_2.util.TimberDebugTree
 import com.hc.problem_timer_2.util.added
 import com.hc.problem_timer_2.viewmodel.BookListViewModel
@@ -153,17 +153,32 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun TimerScreen() {
+fun TimerScreen(
+    selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel()
+) {
+    val selectedBookInfo by selectedBookInfoViewModel.selectedBookInfo.observeAsState()
+
     var isGradeMode by remember { mutableStateOf(false) }
     var isShowingAddBookDialog by remember { mutableStateOf(false) }
     var problemToUpdate by remember { mutableStateOf<Problem?>(null) }
     var problemToEdit by remember { mutableStateOf<Problem?>(null) }
+
     Column(modifier = Modifier.fillMaxSize()) {
         BookTab { isShowingAddBookDialog = true }
         Divider(thickness = 1.dp, color = Color.LightGray)
-//        PageAndGradeTab({ isGradeMode }, { value: Boolean -> isGradeMode = value })
-        PageTab()
-        Divider(thickness = 1.dp, color = Color.LightGray)
+        AnimatedVisibility(
+            visible = selectedBookInfo!!.isBookSelected(),
+            enter = slideInHorizontally()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight()
+            ) {
+                PageTab()
+                Divider(thickness = 1.dp, color = Color.LightGray)
+            }
+        }
         if (isShowingAddBookDialog) AddBookDialog { isShowingAddBookDialog = false }
         ProblemListTab({ isGradeMode }, { value: Problem -> problemToUpdate = value }, { value: Problem -> problemToEdit == value }, { problemToEdit = null })
         if (problemToUpdate != null) UpdateProblemDialog(problemToUpdate!!, { problemToUpdate = null }, { problemToEdit = problemToUpdate })
@@ -184,6 +199,7 @@ fun BookTab(
     } }
     var isShowingDeleteBookBtn by remember { mutableStateOf(false) }
     if (selectedBook != null) { selectedBookInfoViewModel.select(selectedBook!!) }
+
     BookTabStateless(
         books!!,
         { selectedItemIndex },
@@ -488,7 +504,7 @@ fun PageTab(
             state = listState
         ) {
             items(pages) { page ->
-                MyPageButton(
+                PageButton(
                     selectedPage == page,
                     { selectedBookInfoViewModel.select(page) },
                     page
@@ -507,7 +523,7 @@ fun PageTab(
 }
 
 @Composable
-fun MyPageButton(
+fun PageButton(
     isSelected: Boolean,
     selectPage: () -> Unit,
     page: Int

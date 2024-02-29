@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -610,6 +611,7 @@ fun ColumnScope.ProblemListTab(
 
     ProblemListTabStateless(
         selectedBookInfo!!.isBookSelected(),
+        selectedBookInfo!!.isPageSelected(),
         problemsOnSelectedPage,
         problemRecordsMapOnSelectedPage,
         setProblemToUpdate,
@@ -623,6 +625,7 @@ fun ColumnScope.ProblemListTab(
 @Composable
 fun ColumnScope.ProblemListTabStateless(
     isBookSelected: Boolean,
+    isPageSelected: Boolean,
     problemsOnSelectedPage: List<Problem>,
     problemRecordsMapOnSelectedPage: Map<String, List<ProblemRecord>>,
     setProblemToUpdate: (Problem) -> Unit,
@@ -639,9 +642,9 @@ fun ColumnScope.ProblemListTabStateless(
             .padding(vertical = 15.dp, horizontal = 10.dp),
         contentAlignment = Alignment.Center
     ) {
-        if (!isBookSelected) {
+        if (!isBookSelected || !isPageSelected) {
             Text(
-                text = context.getString(R.string.select_book),
+                text = if (isBookSelected) context.getString(R.string.select_book) else context.getString(R.string.select_page),
                 fontSize = 12.sp
             )
         } else {
@@ -672,7 +675,7 @@ fun ColumnScope.ProblemListHeaderTab(isGradeMode: () -> Boolean, toggleGradeMode
     ) {
         this@ProblemListHeaderTab.AnimatedVisibility(
             visible = !isGradeMode(),
-            enter = fadeIn(),
+            enter = fadeIn(animationSpec = tween(500)),
             exit = fadeOut()
         ) {
             ProblemListHeaderInNormalModeTab(toggleGradeMode)
@@ -680,7 +683,7 @@ fun ColumnScope.ProblemListHeaderTab(isGradeMode: () -> Boolean, toggleGradeMode
         this@ProblemListHeaderTab.AnimatedVisibility(
             visible = isGradeMode(),
             enter = slideInHorizontally(),
-            exit = slideOutHorizontally()
+            exit = slideOutHorizontally(animationSpec = tween(500))
         ) {
             ProblemListHeaderInGradeModeTab()
         }

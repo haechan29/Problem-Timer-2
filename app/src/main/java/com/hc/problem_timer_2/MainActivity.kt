@@ -1,6 +1,7 @@
 package com.hc.problem_timer_2
 
 import android.content.Context
+import android.hardware.camera2.params.BlackLevelPattern
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -9,10 +10,14 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -145,7 +150,6 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
-        const val PAGE_ITEM_SIZE = 40
         const val POSITIVE_INTEGER_MATCHER = "^([1-9]\\d*)$"
     }
 }
@@ -155,8 +159,6 @@ fun TimerScreen(
     selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel()
 ) {
     val selectedBookInfo by selectedBookInfoViewModel.selectedBookInfo.observeAsState()
-
-    var isGradeMode by remember { mutableStateOf(false) }
     var isShowingAddBookDialog by remember { mutableStateOf(false) }
     var problemToUpdate by remember { mutableStateOf<Problem?>(null) }
     var problemToEdit by remember { mutableStateOf<Problem?>(null) }
@@ -181,7 +183,7 @@ fun TimerScreen(
                 Divider(thickness = 1.dp, color = Color.LightGray)
             }
         }
-        ProblemListTab({ isGradeMode }, { value: Problem -> problemToUpdate = value }, { value: Problem -> problemToEdit == value }, { problemToEdit = null })
+        ProblemListTab({ value: Problem -> problemToUpdate = value }, { value: Problem -> problemToEdit == value }, { problemToEdit = null })
         if (isShowingAddBookDialog) AddBookDialog { isShowingAddBookDialog = false }
         if (problemToUpdate != null) UpdateProblemDialog(problemToUpdate!!, { problemToUpdate = null }, { problemToEdit = problemToUpdate })
     }
@@ -586,7 +588,6 @@ fun AddPageButton(addPages: () -> Unit) {
 
 @Composable
 fun ColumnScope.ProblemListTab(
-    isGradeMode: () -> Boolean,
     setProblemToUpdate: (Problem) -> Unit,
     isProblemEditing: (Problem) -> Boolean,
     finishEditingProblem: () -> Unit,
@@ -601,19 +602,21 @@ fun ColumnScope.ProblemListTab(
         .onBook(selectedBookInfo!!.selectedBook?.id)
         .onPage(selectedBookInfo!!.selectedPage)
         .sorted()
-    val problemRecordListMapOnSelectedPage = problemRecordList!!
+    val problemRecordsMapOnSelectedPage = problemRecordList!!
         .onBook(selectedBookInfo!!.selectedBook)
         .onPage(selectedBookInfo!!.selectedPage)
         .toProblemRecordListMap()
+    var isGradeMode by remember { mutableStateOf(false) }
 
     ProblemListTabStateless(
         selectedBookInfo!!.isBookSelected(),
         problemsOnSelectedPage,
-        problemRecordListMapOnSelectedPage,
+        problemRecordsMapOnSelectedPage,
         setProblemToUpdate,
         isProblemEditing,
         finishEditingProblem,
-        isGradeMode
+        { isGradeMode },
+        { isGradeMode = !isGradeMode }
     )
 }
 
@@ -621,11 +624,12 @@ fun ColumnScope.ProblemListTab(
 fun ColumnScope.ProblemListTabStateless(
     isBookSelected: Boolean,
     problemsOnSelectedPage: List<Problem>,
-    problemRecordListMapOnSelectedPage: Map<String, List<ProblemRecord>>,
+    problemRecordsMapOnSelectedPage: Map<String, List<ProblemRecord>>,
     setProblemToUpdate: (Problem) -> Unit,
     isProblemEditing: (Problem) -> Boolean,
     finishEditingProblem: () -> Unit,
     isGradeMode: () -> Boolean,
+    toggleGradeMode: () -> Unit,
     context: Context = LocalContext.current
 ) {
     Box(
@@ -641,23 +645,50 @@ fun ColumnScope.ProblemListTabStateless(
                 fontSize = 12.sp
             )
         } else {
-            Column {
-                ProblemListHeaderTab()
+            Column(modifier = Modifier.fillMaxSize()) {
+                ProblemListHeaderTab(isGradeMode, toggleGradeMode)
                 ProblemListBodyTab(
                     problemsOnSelectedPage,
-                    problemRecordListMapOnSelectedPage,
+                    problemRecordsMapOnSelectedPage,
                     setProblemToUpdate,
                     isProblemEditing,
                     finishEditingProblem,
                     isGradeMode
                 )
+                if (isGradeMode()) {
+                    GradeButtonTab(toggleGradeMode)
+                }
             }
         }
     }
 }
 
 @Composable
-fun ProblemListHeaderTab() {
+fun ColumnScope.ProblemListHeaderTab(isGradeMode: () -> Boolean, toggleGradeMode: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight()
+    ) {
+        this@ProblemListHeaderTab.AnimatedVisibility(
+            visible = !isGradeMode(),
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            ProblemListHeaderInNormalModeTab(toggleGradeMode)
+        }
+        this@ProblemListHeaderTab.AnimatedVisibility(
+            visible = isGradeMode(),
+            enter = slideInHorizontally(),
+            exit = slideOutHorizontally()
+        ) {
+            ProblemListHeaderInGradeModeTab()
+        }
+    }
+}
+
+@Composable
+fun ProblemListHeaderInNormalModeTab(toggleGradeMode: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -674,7 +705,9 @@ fun ProblemListHeaderTab() {
         )
         Spacer(modifier = Modifier.weight(1f))
         Row(
-            modifier = Modifier.wrapContentSize(),
+            modifier = Modifier
+                .wrapContentSize()
+                .clickable { toggleGradeMode() },
             verticalAlignment = Alignment.CenterVertically
         ) {
             TextWithoutPadding(
@@ -696,24 +729,60 @@ fun ProblemListHeaderTab() {
 }
 
 @Composable
-fun ProblemListBodyTab(
+fun ProblemListHeaderInGradeModeTab() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight(),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        TextWithoutPadding(
+            modifier = Modifier.wrapContentSize(),
+            textAlign = TextAlign.Center,
+            text = "채점하기",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = notosanskr
+        )
+    }
+}
+
+@Composable
+fun ColumnScope.ProblemListBodyTab(
     problemsOnSelectedPage: List<Problem>,
-    problemRecordListMapOnSelectedPage: Map<String, List<ProblemRecord>>,
+    problemRecordsMapOnSelectedPage: Map<String, List<ProblemRecord>>,
     setProblemToUpdate: (Problem) -> Unit,
     isProblemEditing: (Problem) -> Boolean,
     finishEditingProblem: () -> Unit,
-    isGradeMode: () -> Boolean
+    isGradeMode: () -> Boolean,
+    problemRecordListViewModel: ProblemRecordListViewModel = viewModel()
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .weight(1f)
+            .wrapContentHeight(),
         contentPadding = PaddingValues(vertical = 15.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         items(items = problemsOnSelectedPage) { problem ->
             val problemRecords =
-                problemRecordListMapOnSelectedPage[problem.number] ?: emptyList()
+                problemRecordsMapOnSelectedPage[problem.number] ?: emptyList()
             var isShowingProblemRecords by remember { mutableStateOf(false) }
+            var currentTimeRecord by remember { mutableIntStateOf(0) }
+            var currentGrade by remember { mutableStateOf(Unranked) }
+            val addProblemRecord = {
+                problemRecordListViewModel.addProblemRecord(
+                    ProblemRecord(
+                        bookId = problem.bookId,
+                        page = problem.page,
+                        number = problem.number,
+                        timeRecord = currentTimeRecord,
+                        grade = currentGrade,
+                        solvedAt = getNow()
+                    )
+                )
+            }
 
             ProblemAndProblemRecordTabStateless(
                 problem,
@@ -722,8 +791,13 @@ fun ProblemListBodyTab(
                 { isProblemEditing(problem) },
                 finishEditingProblem,
                 isGradeMode,
+                { currentTimeRecord },
+                { value: Int -> currentTimeRecord += value },
                 { isShowingProblemRecords },
-                { value: Boolean -> isShowingProblemRecords = value }
+                { value: Boolean -> isShowingProblemRecords = value },
+                { currentGrade },
+                { currentGrade = currentGrade.next() },
+                addProblemRecord
             )
         }
     }
@@ -737,10 +811,21 @@ fun ProblemAndProblemRecordTabStateless(
     isProblemEditing: () -> Boolean,
     finishEditingProblem: () -> Unit,
     isGradeMode: () -> Boolean,
+    getCurrentTimeRecord: () -> Int,
+    increaseCurrentTimeRecord: (Int) -> Unit,
     isShowingProblemRecords: () -> Boolean,
-    setShowingProblemRecords: (Boolean) -> Unit
+    setShowingProblemRecords: (Boolean) -> Unit,
+    getCurrentGrade: () -> Grade,
+    setNextGrade: () -> Unit,
+    addProblemRecord: () -> Unit
 ) {
-    LaunchedEffect(key1 = isGradeMode()) { setShowingProblemRecords(false) }
+    LaunchedEffect(key1 = isGradeMode()) {
+        setShowingProblemRecords(false)
+
+        if (!isGradeMode() && !shouldWaitToRecordAgain(problemRecords.firstOrNull()) && getCurrentGrade() != Unranked) {
+            addProblemRecord()
+        }
+    }
 
     Card(
         modifier = Modifier
@@ -750,41 +835,71 @@ fun ProblemAndProblemRecordTabStateless(
             defaultElevation = 5.dp,
         )
     ) {
-        Column(
-            modifier = Modifier
-                .background(color = Color.White)
-                .padding(all = 20.dp)
-                .fillMaxWidth()
-                .wrapContentHeight()
-        ) {
-            ProblemContentTab(problem)
-            AnimatedVisibility(
-                visible = isShowingProblemRecords(),
-                enter = expandVertically(expandFrom = Alignment.Top),
-                exit = shrinkVertically(shrinkTowards = Alignment.Top)
+        if (isGradeMode()) {
+            Row(
+                modifier = Modifier
+                    .background(color = Color.White)
+                    .padding(all = 20.dp)
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(
+                MyProblemNumberTab(problem, getCurrentGrade)
+                Spacer(Modifier.width(24.dp))
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .wrapContentHeight()
+                        .weight(1f)
+                        .height(40.dp)
+                        .clickable { setNextGrade() },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Spacer(modifier = Modifier.height(20.dp))
-                    ProblemRecordListTab(problemRecords)
+                    TextWithoutPadding(
+                        modifier = Modifier.wrapContentWidth(),
+                        textAlign = TextAlign.Center,
+                        text = getCurrentGrade().text,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Normal,
+                        fontFamily = notosanskr,
+                        color = getCurrentGrade().color
+                    )
                 }
             }
-            Spacer(modifier = Modifier.height(15.dp))
-            Divider(
+        } else {
+            Column(
                 modifier = Modifier
-                    .padding(horizontal = 5.dp)
+                    .background(color = Color.White)
+                    .padding(all = 20.dp)
                     .fillMaxWidth()
-                    .height(1.dp)
-                    .background(color = colorResource(id = R.color.black_300))
-            )
-            Spacer(modifier = Modifier.height(15.dp))
-            ProblemRecordViewMoreTab(
-                isShowingProblemRecords,
-                { setShowingProblemRecords(!isShowingProblemRecords()) }
-            )
+                    .wrapContentHeight()
+            ) {
+                ProblemContentTab(problem, getCurrentTimeRecord, increaseCurrentTimeRecord, getCurrentGrade)
+                AnimatedVisibility(
+                    visible = isShowingProblemRecords(),
+                    enter = expandVertically(expandFrom = Alignment.Top),
+                    exit = shrinkVertically(shrinkTowards = Alignment.Top)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .wrapContentHeight()
+                    ) {
+                        Spacer(modifier = Modifier.height(20.dp))
+                        ProblemRecordListTab(problemRecords)
+                    }
+                }
+                Spacer(modifier = Modifier.height(15.dp))
+                Divider(
+                    modifier = Modifier
+                        .padding(horizontal = 5.dp)
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(color = colorResource(id = R.color.black_300))
+                )
+                Spacer(modifier = Modifier.height(15.dp))
+                ProblemRecordViewMoreTab(
+                    isShowingProblemRecords,
+                    { setShowingProblemRecords(!isShowingProblemRecords()) }
+                )
 //            ProblemTab(
 //                problem,
 //                problemRecords,
@@ -803,20 +918,24 @@ fun ProblemAndProblemRecordTabStateless(
 //                Spacer(modifier = Modifier.height(10.dp))
 //                ProblemRecordListTab(problemRecords)
 //            }
+            }
         }
     }
 }
 
 @Composable
-fun ProblemContentTab(problem: Problem) {
+fun ProblemContentTab(
+    problem: Problem,
+    getCurrentTimeRecord: () -> Int,
+    increaseCurrentTimeRecord: (Int) -> Unit,
+    getCurrentGrade: () -> Grade
+) {
     var isTimerRunning by remember { mutableStateOf(false) }
-    var currentTimeRecord by remember { mutableIntStateOf(0) }
-    var currentGrade: Grade by remember { mutableStateOf(Unranked) }
 
     LaunchedEffect(key1 = isTimerRunning) {
         while (isTimerRunning) {
             delay(100)
-            currentTimeRecord += 100
+            increaseCurrentTimeRecord(100)
         }
     }
 
@@ -828,62 +947,77 @@ fun ProblemContentTab(problem: Problem) {
             .wrapContentHeight(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .padding(vertical = 5.dp)
-                .size(40.dp)
-                .background(color = currentGrade.color, shape = RoundedCornerShape(10.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            TextWithoutPadding(
-                modifier = Modifier.wrapContentSize(),
-                textAlign = TextAlign.Center,
-                text = problem.number,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = notosanskr,
-                color = Color.White,
-                maxLines = 1
-            )
-        }
+        MyProblemNumberTab(problem, getCurrentGrade)
         Spacer(Modifier.width(24.dp))
+        MyProblemTimerTab(getCurrentTimeRecord)
+        Spacer(Modifier.weight(1f))
+        MyProblemTimberButton(isTimerRunning) { isTimerRunning = !isTimerRunning }
+    }
+}
+
+@Composable
+fun MyProblemNumberTab(problem: Problem, getCurrentGrade: () -> Grade) {
+    Box(
+        modifier = Modifier
+            .padding(vertical = 5.dp)
+            .size(40.dp)
+            .background(color = getCurrentGrade().color, shape = RoundedCornerShape(10.dp)),
+        contentAlignment = Alignment.Center
+    ) {
         TextWithoutPadding(
             modifier = Modifier.wrapContentSize(),
             textAlign = TextAlign.Center,
-            text = toTimeFormat(currentTimeRecord),
-            fontSize = 20.sp,
+            text = problem.number,
+            fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
-            fontFamily = applesdgothicneo,
+            fontFamily = notosanskr,
+            color = Color.White,
             maxLines = 1
         )
-        Spacer(Modifier.weight(1f))
-        Row(
-            modifier = Modifier
-                .background(
-                    color = colorResource(id = R.color.black_200),
-                    shape = RoundedCornerShape(10.dp)
-                )
-                .clickable { isTimerRunning = !isTimerRunning }
-                .padding(horizontal = 15.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextWithoutPadding(
-                modifier = Modifier.wrapContentSize(),
-                textAlign = TextAlign.Center,
-                text = if (isTimerRunning) "타이머 정지" else "타이머 시작",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = notosanskr,
-                maxLines = 1,
-                color = colorResource(id = R.color.black_500)
+    }
+}
+
+@Composable
+fun MyProblemTimerTab(getCurrentTimeRecord: () -> Int) {
+    TextWithoutPadding(
+        modifier = Modifier.wrapContentSize(),
+        textAlign = TextAlign.Center,
+        text = toTimeFormat(getCurrentTimeRecord()),
+        fontSize = 20.sp,
+        fontWeight = FontWeight.Bold,
+        fontFamily = applesdgothicneo,
+        maxLines = 1
+    )
+}
+
+@Composable
+fun MyProblemTimberButton(isTimerRunning: Boolean, toggleTimerRunning: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .background(
+                color = colorResource(id = R.color.black_200),
+                shape = RoundedCornerShape(10.dp)
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Icon(
-                modifier = Modifier.size(20.dp),
-                painter = painterResource(id = R.drawable.clock_24px),
-                contentDescription = "record time",
-            )
-        }
+            .clickable { toggleTimerRunning() }
+            .padding(horizontal = 15.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        TextWithoutPadding(
+            modifier = Modifier.wrapContentSize(),
+            textAlign = TextAlign.Center,
+            text = if (isTimerRunning) "타이머 정지" else "타이머 시작",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = notosanskr,
+            maxLines = 1,
+            color = colorResource(id = R.color.black_500)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Icon(
+            modifier = Modifier.size(20.dp),
+            painter = painterResource(id = R.drawable.clock_24px),
+            contentDescription = "record time",
+        )
     }
 }
 
@@ -1231,6 +1365,29 @@ fun ProblemRecordListTab(problemRecords: List<ProblemRecord>) {
                 }
             }
         }
+    }
+}
+
+@Composable
+fun GradeButtonTab(toggleGradeMode: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clickable { toggleGradeMode() }
+            .fillMaxWidth()
+            .height(60.dp)
+            .background(
+                color = colorResource(id = R.color.blue_800),
+                shape = RoundedCornerShape(10.dp)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        TextWithoutPadding(
+            text = "채점 완료",
+            fontSize = 16.sp,
+            fontFamily = notosanskr,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White
+        )
     }
 }
 

@@ -169,7 +169,7 @@ fun TimerScreen(
             .background(color = Color.White)
             .fillMaxSize()
     ) {
-        BookTab { isShowingAddBookDialog = true }
+        BookTab( { isShowingAddBookDialog = true } )
         Divider(thickness = 1.dp, color = Color.LightGray)
         AnimatedVisibility(
             visible = selectedBookInfo!!.isBookSelected(),
@@ -192,23 +192,18 @@ fun TimerScreen(
 
 @Composable
 fun BookTab(
+    showAddBookDialog: () -> Unit,
     bookListViewModel: BookListViewModel = viewModel(),
-    selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel(),
-    showAddBookDialog: () -> Unit
+    selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel()
 ) {
     val books by bookListViewModel.bookList.observeAsState()
-    var selectedItemIndex by remember { mutableStateOf<Int?>(null) }
-    val selectedBook by remember { derivedStateOf<Book?> {
-        if (selectedItemIndex == null) null
-        else books!![selectedItemIndex!!]
-    } }
+    val selectedBookInfo by selectedBookInfoViewModel.selectedBookInfo.observeAsState()
     var isShowingDeleteBookBtn by remember { mutableStateOf(false) }
-    if (selectedBook != null) { selectedBookInfoViewModel.select(selectedBook!!) }
 
     BookTabStateless(
         books!!,
-        { selectedItemIndex },
-        { value: Int -> selectedItemIndex = value },
+        { book: Book -> selectedBookInfo!!.selectedBook == book },
+        { book: Book -> selectedBookInfoViewModel.select(book) },
         showAddBookDialog,
         { isShowingDeleteBookBtn },
         { value: Boolean -> isShowingDeleteBookBtn = value}
@@ -218,8 +213,8 @@ fun BookTab(
 @Composable
 fun BookTabStateless(
     books: List<Book>,
-    getSelectedItemIndex: () -> Int?,
-    setSelectedItemIndex: (Int) -> Unit,
+    isSelected: (Book) -> Boolean,
+    selectBook: (Book) -> Unit,
     showAddBookDialog: () -> Unit,
     isDeleteBookBtnVisible: () -> Boolean,
     setVisibilityOfDeleteButton: (Boolean) -> Unit
@@ -252,11 +247,12 @@ fun BookTabStateless(
             horizontalArrangement = Arrangement.spacedBy(18.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            items(books.size) { itemIndex ->
+            items(books) { book ->
                 BookButton(
-                    books[itemIndex],
-                    getSelectedItemIndex() == itemIndex,
-                    { setSelectedItemIndex(itemIndex) },
+                    book,
+                    isSelected(book),
+                    { selectBook(book) },
+                    showAddBookDialog,
                     isDeleteBookBtnVisible,
                     { setVisibilityOfDeleteButton(!isDeleteBookBtnVisible()) }
                 )
@@ -279,10 +275,12 @@ fun BookButton(
     book: Book,
     isSelected: Boolean,
     selectBook: () -> Unit,
+    showAddBookDialog: () -> Unit,
     isDeleteBookBtnVisible: () -> Boolean,
     toggleVisibilityOfDeleteButton: () -> Unit,
     bookListViewModel: BookListViewModel = viewModel(),
-    problemListViewModel: ProblemListViewModel = viewModel()
+    problemListViewModel: ProblemListViewModel = viewModel(),
+    selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel()
 ) {
     Box(
         modifier = Modifier
@@ -317,6 +315,7 @@ fun BookButton(
                     .background(color = Color.Red, shape = CircleShape)
                     .align(Alignment.TopEnd)
                     .clickable {
+                        selectedBookInfoViewModel.unselect()
                         bookListViewModel.deleteBook(book.id)
                         problemListViewModel.deleteProblemsOnBook(book.id)
                         toggleVisibilityOfDeleteButton()

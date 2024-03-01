@@ -12,8 +12,9 @@ class SelectedBookInfoViewModel @Inject constructor(): ViewModel() {
     private val _selectedSelectedBookInfo = MutableLiveData(SelectedBookInfo())
     val selectedBookInfo: LiveData<SelectedBookInfo> get() = _selectedSelectedBookInfo
 
-    fun select(book: Book) { _selectedSelectedBookInfo.value = SelectedBookInfo(selectedBook = book, selectedPage = null) }
+    fun select(book: Book) { _selectedSelectedBookInfo.value = SelectedBookInfo(selectedBook = book) }
     fun select(page: Int) { _selectedSelectedBookInfo.value = withSelectedBookInfoNotNull { it.copy(selectedPage = page) } }
+    fun unselect() { _selectedSelectedBookInfo.value = SelectedBookInfo() }
 
     private fun <R> withSelectedBookInfoNotNull(f: (SelectedBookInfo) -> R): R {
         if (selectedBookInfo.value == null) throw UninitializedPropertyAccessException("bookInfo not initialized")

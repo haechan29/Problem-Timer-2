@@ -611,6 +611,7 @@ fun ColumnScope.ProblemListTab(
     var isGradeMode by remember { mutableStateOf(false) }
 
     ProblemListTabStateless(
+        selectedBookInfo!!.selectedPage,
         selectedBookInfo!!.isBookSelected(),
         selectedBookInfo!!.isPageSelected(),
         problemsOnSelectedPage,
@@ -625,6 +626,7 @@ fun ColumnScope.ProblemListTab(
 
 @Composable
 fun ColumnScope.ProblemListTabStateless(
+    selectedPage: Int?,
     isBookSelected: Boolean,
     isPageSelected: Boolean,
     problemsOnSelectedPage: List<Problem>,
@@ -652,6 +654,7 @@ fun ColumnScope.ProblemListTabStateless(
             Column(modifier = Modifier.fillMaxSize()) {
                 ProblemListHeaderTab(isGradeMode, toggleGradeMode)
                 ProblemListBodyTab(
+                    selectedPage,
                     problemsOnSelectedPage,
                     problemRecordsMapOnSelectedPage,
                     setProblemToUpdate,
@@ -753,6 +756,7 @@ fun ProblemListHeaderInGradeModeTab() {
 
 @Composable
 fun ColumnScope.ProblemListBodyTab(
+    selectedPage: Int?,
     problemsOnSelectedPage: List<Problem>,
     problemRecordsMapOnSelectedPage: Map<String, List<ProblemRecord>>,
     setProblemToUpdate: (Problem) -> Unit,
@@ -789,6 +793,7 @@ fun ColumnScope.ProblemListBodyTab(
             }
 
             ProblemAndProblemRecordTabStateless(
+                selectedPage,
                 problem,
                 problemRecords,
                 { setProblemToUpdate(problem) },
@@ -809,6 +814,7 @@ fun ColumnScope.ProblemListBodyTab(
 
 @Composable
 fun ProblemAndProblemRecordTabStateless(
+    selectedPage: Int?,
     problem: Problem,
     problemRecords: List<ProblemRecord>,
     updateProblem: () -> Unit,
@@ -823,9 +829,12 @@ fun ProblemAndProblemRecordTabStateless(
     setNextGrade: () -> Unit,
     addProblemRecord: () -> Unit
 ) {
+    LaunchedEffect(key1 = selectedPage) {
+        setShowingProblemRecords(false)
+    }
+
     LaunchedEffect(key1 = isGradeMode()) {
         setShowingProblemRecords(false)
-
         if (!isGradeMode() && !shouldWaitToRecordAgain(problemRecords.firstOrNull()) && getCurrentGrade() != Unranked) {
             addProblemRecord()
         }

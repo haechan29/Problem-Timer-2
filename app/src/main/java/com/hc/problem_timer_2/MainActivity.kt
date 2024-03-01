@@ -282,6 +282,7 @@ fun BookButton(
     isDeleteBookBtnVisible: () -> Boolean,
     toggleVisibilityOfDeleteButton: () -> Unit,
     bookListViewModel: BookListViewModel = viewModel(),
+    problemListViewModel: ProblemListViewModel = viewModel()
 ) {
     Box(
         modifier = Modifier
@@ -317,6 +318,7 @@ fun BookButton(
                     .align(Alignment.TopEnd)
                     .clickable {
                         bookListViewModel.deleteBook(book.id)
+                        problemListViewModel.deleteProblemsOnBook(book.id)
                         toggleVisibilityOfDeleteButton()
                     }
             ) {
@@ -644,7 +646,7 @@ fun ColumnScope.ProblemListTabStateless(
     ) {
         if (!isBookSelected || !isPageSelected) {
             Text(
-                text = if (isBookSelected) context.getString(R.string.select_book) else context.getString(R.string.select_page),
+                text = if (!isBookSelected) context.getString(R.string.select_book) else context.getString(R.string.select_page),
                 fontSize = 12.sp
             )
         } else {

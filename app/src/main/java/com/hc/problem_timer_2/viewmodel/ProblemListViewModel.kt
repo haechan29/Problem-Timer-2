@@ -39,6 +39,11 @@ class ProblemListViewModel @Inject constructor(private val problemRepository: Pr
         problemRepository.delete(problem)
     }
 
+    fun deleteProblemsOnBook(bookId: Long) = doIOAndGetProblemsOfSelectedBook {
+        val problemsOnBook = problems.value!!.onBook(bookId)
+        problemRepository.deleteAll(problemsOnBook)
+    }
+
     fun addDefaultProblems(bookId: Long) = doIOAndGetProblemsOfSelectedBook {
         problemRepository.insertAll(getDefaultProblems(bookId = bookId))
     }
@@ -50,12 +55,15 @@ class ProblemListViewModel @Inject constructor(private val problemRepository: Pr
         number in problemsOnnSamePage.map { it.number }
     }
 
-    private fun getLastProblem() = problems.value!!.maxOfOrNull { it }
-    fun isLastProblem(problem: Problem) = problem.number == getLastProblem()?.number
+    private fun getLastProblem(bookId: Long) = problems.value!!
+        .filter { it.bookId == bookId }
+        .maxOfOrNull { it }
+
+    fun isLastProblem(problem: Problem) = problem.number == getLastProblem(problem.bookId)?.number
 
     private fun getDefaultProblems(bookId: Long): List<Problem> {
         if (bookId == 0L) throw UninitializedPropertyAccessException("book is not initialized")
-        val lastPage = getLastProblem()?.page ?: 0
+        val lastPage = getLastProblem(bookId)?.page ?: 0
         val numberOfPages = 100
         val numberOfProblemsPerPage = 5
         return (lastPage + 1 .. lastPage + numberOfPages).map { page ->

@@ -9,4 +9,5 @@ interface ProblemRepository {
     suspend fun insertAll(problems: List<Problem>)
     suspend fun update(problem: Problem)
     suspend fun delete(problem: Problem)
+    suspend fun deleteAll(problems: List<Problem>)
 }

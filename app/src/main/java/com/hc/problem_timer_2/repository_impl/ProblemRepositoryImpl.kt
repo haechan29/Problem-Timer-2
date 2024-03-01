@@ -14,4 +14,5 @@ class ProblemRepositoryImpl @Inject constructor(private val problemDao: ProblemD
     override suspend fun insertAll(problems: List<Problem>) = problemDao.insertAll(*problems.map { it.toDto() }.toTypedArray())
     override suspend fun update(problem: Problem) = problemDao.update(problem.toDto())
     override suspend fun delete(problem: Problem) = problemDao.delete(problem.toDto())
+    override suspend fun deleteAll(problems: List<Problem>) = problemDao.deleteAll(*problems.map { it.toDto() }.toTypedArray())
 }

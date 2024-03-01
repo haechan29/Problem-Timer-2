@@ -27,4 +27,7 @@ interface ProblemDao {
 
     @Delete
     suspend fun delete(problemDto: ProblemDto)
+
+    @Delete
+    suspend fun deleteAll(vararg problemDto: ProblemDto)
 }

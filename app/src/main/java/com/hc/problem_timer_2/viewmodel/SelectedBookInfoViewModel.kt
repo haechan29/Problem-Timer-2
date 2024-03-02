@@ -12,7 +12,7 @@ class SelectedBookInfoViewModel @Inject constructor(): ViewModel() {
     private val _selectedSelectedBookInfo = MutableLiveData(SelectedBookInfo())
     val selectedBookInfo: LiveData<SelectedBookInfo> get() = _selectedSelectedBookInfo
 
-    fun select(book: Book) { _selectedSelectedBookInfo.value = SelectedBookInfo(selectedBook = book) }
+    fun select(book: Book) { _selectedSelectedBookInfo.value = SelectedBookInfo(selectedBook = book, selectedPage = null) }
     fun select(page: Int) { _selectedSelectedBookInfo.value = withSelectedBookInfoNotNull { it.copy(selectedPage = page) } }
     fun unselect() { _selectedSelectedBookInfo.value = SelectedBookInfo() }
 

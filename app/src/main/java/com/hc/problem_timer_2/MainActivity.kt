@@ -221,8 +221,8 @@ fun BookTabStateless(
 ) {
     Row(
         modifier = Modifier
-            .wrapContentHeight()
-            .padding(10.dp),
+            .height(50.dp)
+            .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         TextWithoutPadding(
@@ -252,7 +252,6 @@ fun BookTabStateless(
                     book,
                     isSelected(book),
                     { selectBook(book) },
-                    showAddBookDialog,
                     isDeleteBookBtnVisible,
                     { setVisibilityOfDeleteButton(!isDeleteBookBtnVisible()) }
                 )
@@ -275,21 +274,23 @@ fun BookButton(
     book: Book,
     isSelected: Boolean,
     selectBook: () -> Unit,
-    showAddBookDialog: () -> Unit,
     isDeleteBookBtnVisible: () -> Boolean,
     toggleVisibilityOfDeleteButton: () -> Unit,
     bookListViewModel: BookListViewModel = viewModel(),
     problemListViewModel: ProblemListViewModel = viewModel(),
     selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel()
 ) {
+    val paddingTopForDeleteBookBtn = 3.dp
+    val paddingEndForDeleteBookBtn = 3.dp
+
     Box(
-        modifier = Modifier
-            .wrapContentWidth()
-            .height(30.dp),
+        modifier = Modifier.wrapContentSize(),
         contentAlignment = Alignment.TopEnd
     ) {
         Box(
             modifier = Modifier
+                .padding(top = paddingTopForDeleteBookBtn, bottom = paddingTopForDeleteBookBtn, end = paddingEndForDeleteBookBtn)
+                .height(30.dp)
                 .background(
                     color = if (isSelected) colorResource(R.color.black_200) else Color.Transparent,
                     shape = RoundedCornerShape(10.dp)
@@ -312,19 +313,18 @@ fun BookButton(
         if (isDeleteBookBtnVisible()) {
             Box(
                 modifier = Modifier
-                    .background(color = Color.Red, shape = CircleShape)
-                    .align(Alignment.TopEnd)
+                    .size(14.dp)
+                    .background(color = Color.Black, shape = CircleShape)
                     .clickable {
                         selectedBookInfoViewModel.unselect()
                         bookListViewModel.deleteBook(book.id)
                         problemListViewModel.deleteProblemsOnBook(book.id)
                         toggleVisibilityOfDeleteButton()
-                    }
+                    },
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .padding(3.dp),
+                    modifier = Modifier.size(8.dp),
                     imageVector = Icons.Default.Clear,
                     contentDescription = "delete book",
                     tint = Color.White
@@ -471,10 +471,17 @@ fun PageTab(
         .filter { it.bookId == bookInfo!!.selectedBook!!.id }
         .map { it.page }
         .distinct()
-    if (pages.isEmpty()) problemListViewModel.addDefaultProblems(bookInfo!!.selectedBook!!.id)
+    if (pages.isEmpty()) {
+        problemListViewModel.addDefaultProblems(bookInfo!!.selectedBook!!.id)
+    } else {
+        if (!bookInfo!!.isPageSelected()) {
+            selectedBookInfoViewModel.select(pages.first())
+        }
+    }
     val selectedPage = bookInfo!!.selectedPage
 
-    LaunchedEffect(key1 = selectedPage) {
+    // 사용자가 페이지를 추가하면 pages가 변경된다
+    LaunchedEffect(key1 = selectedPage, key2 = pages) {
         if (!pages.contains(selectedPage)) return@LaunchedEffect
         val index = pages.indexOf(selectedPage)
         scope.launch { listState.animateScrollToItem(index) }
@@ -524,7 +531,10 @@ fun PageTab(
                 .height(20.dp),
             color = colorResource(id = R.color.black_300)
         )
-        AddPageButton {}
+        AddPageButton {
+            val bookId = bookInfo!!.selectedBook!!.id
+            problemListViewModel.addDefaultProblems(bookId)
+        }
     }
 }
 

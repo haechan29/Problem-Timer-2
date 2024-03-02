@@ -1,13 +1,11 @@
 package com.hc.problem_timer_2
 
 import android.content.Context
-import android.hardware.camera2.params.BlackLevelPattern
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -18,7 +16,6 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -53,7 +50,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
@@ -73,7 +69,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableIntStateOf
@@ -96,7 +91,6 @@ import androidx.compose.ui.platform.WindowInfo
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -124,7 +118,7 @@ import com.hc.problem_timer_2.vo.ProblemRecord
 import com.hc.problem_timer_2.util.BaseAlertDialog
 import com.hc.problem_timer_2.util.BaseDialog
 import com.hc.problem_timer_2.util.BasicTextFieldWithHint
-import com.hc.problem_timer_2.util.BasicTextFieldWithoutPadding
+import com.hc.problem_timer_2.util.JamoUtil.toJamoeum
 import com.hc.problem_timer_2.util.TextWithoutPadding
 import com.hc.problem_timer_2.util.applesdgothicneo
 import com.hc.problem_timer_2.vo.Grade
@@ -434,20 +428,27 @@ fun AddBookDialog(
 }
 
 @Composable
-fun AddBookScreen(hideAddBookScreen: () -> Unit) {
+fun AddBookScreen(
+    hideAddBookScreen: () -> Unit,
+    bookListViewModel: BookListViewModel = viewModel()
+) {
+    var bookNameInput by remember { mutableStateOf("") }
+    val addBook = { book: Book -> bookListViewModel.addBook(book) }
     Column(modifier = Modifier.background(Color.White)) {
-        SearchBarTab(hideAddBookScreen)
-        SearchResultTab()
+        SearchBarTab({ bookNameInput }, { value: String -> bookNameInput = value }, addBook, hideAddBookScreen)
+        Spacer(modifier = Modifier.height(12.dp))
+        SearchResultTab({ bookNameInput }, addBook, hideAddBookScreen)
     }
 }
 
 @Composable
 fun SearchBarTab(
+    getBookNameInput: () -> String,
+    setBookNameInput: (String) -> Unit,
+    addBook: (Book) -> Unit,
     hideAddBookScreen: () -> Unit,
-    bookListViewModel: BookListViewModel = viewModel(),
     scope: CoroutineScope = rememberCoroutineScope()
 ) {
-    var bookNameInput by remember { mutableStateOf("") }
     Row(
         modifier = Modifier.padding(top = 8.dp, bottom = 8.dp, end = 12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -481,8 +482,8 @@ fun SearchBarTab(
                     .weight(1f)
                     .wrapContentHeight()
                     .padding(vertical = 1.dp),
-                value = bookNameInput,
-                onValueChange = { if (it.length <= BOOK_NAME_LENGTH_MAX) bookNameInput = it },
+                value = getBookNameInput(),
+                onValueChange = { if (it.length <= BOOK_NAME_LENGTH_MAX) setBookNameInput(it) },
                 textStyle = TextStyle(
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
@@ -495,11 +496,11 @@ fun SearchBarTab(
                     imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions(onDone = {
-                    if (bookNameInput.isNotEmpty()) {
-                        bookListViewModel.addBook(Book(name = bookNameInput))
+                    if (getBookNameInput().isNotEmpty()) {
+                        addBook(Book(name = getBookNameInput()))
                         hideAddBookScreen()
                     }
-                    bookNameInput = ""
+                    setBookNameInput("")
                 }),
                 singleLine = true,
                 maxLines = 1,
@@ -513,9 +514,9 @@ fun SearchBarTab(
                     .background(color = colorResource(id = R.color.black_500), shape = CircleShape)
                     .clickable {
                         scope.launch {
-                            while (bookNameInput.isNotEmpty()) {
+                            while (getBookNameInput().isNotEmpty()) {
                                 delay(50)
-                                bookNameInput = bookNameInput.slice(0 until bookNameInput.lastIndex)
+                                setBookNameInput(getBookNameInput().slice(0 until getBookNameInput().lastIndex))
                             }
                         }
                     },
@@ -533,8 +534,45 @@ fun SearchBarTab(
 }
 
 @Composable
-fun SearchResultTab() {
-
+fun ColumnScope.SearchResultTab(
+    getBookNameInput: () -> String,
+    addBook: (Book) -> Unit,
+    hideAddBookScreen: () -> Unit
+) {
+    val books = listOf("개념원리", "쎈", "수학의정석", "라이트쎈", "블랙라벨", "자이스토리", "수학의바이블").sorted()
+    val filteredBooks = books.filter { book ->
+        toJamoeum(book).startsWith(toJamoeum(getBookNameInput()))
+    }
+    LazyColumn(
+        modifier = Modifier
+            .weight(1f)
+            .padding(horizontal = 20.dp),
+        contentPadding = PaddingValues(bottom = 12.dp)
+    ) {
+        items(filteredBooks) { book ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight()
+                    .clickable {
+                        addBook(Book(name = book))
+                        hideAddBookScreen()
+                    }
+                    .padding(vertical = 16.dp)
+            ) {
+                TextWithoutPadding(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight(),
+                    textAlign = TextAlign.Start,
+                    text = book,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    fontFamily = notosanskr,
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -634,8 +672,7 @@ fun PageTab(
             textAlign = TextAlign.Center,
             text = "페이지",
             fontSize = 16.sp,
-            fontWeight = FontWeight.Medium,
-            fontFamily = notosanskr
+            fontWeight = FontWeight.Medium, fontFamily = notosanskr
         )
         Divider(
             modifier = Modifier

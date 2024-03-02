@@ -1,24 +1,6 @@
 package com.hc.problem_timer_2.util
 
-import android.content.Context
 import android.content.res.Resources
-import android.widget.Toast
-import androidx.compose.material3.LocalTextStyle
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.PlatformTextStyle
-import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.TextUnit
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -39,5 +21,43 @@ fun <R> Any.tryOrNull(f: () -> R): R? {
         f()
     } catch (e: Exception) {
         null
+    }
+}
+
+object JamoUtil {
+    val CHOSUNG = listOf(
+        "ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ",
+        "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ",
+    )
+    val JUNGSUNG = listOf(
+        "ㅏ", "ㅐ", "ㅑ", "ㅒ", "ㅓ", "ㅔ", "ㅕ", "ㅖ", "ㅗ", "ㅗㅏ",
+        "ㅗㅐ", "ㅗㅣ", "ㅛ", "ㅜ", "ㅜㅓ", "ㅜㅔ", "ㅜㅣ", "ㅠ", "ㅡ", "ㅡㅣ", "ㅣ",
+    )
+    val JONGSUNG = listOf(
+        "", "ㄱ", "ㄲ", "ㄱㅅ", "ㄴ", "ㄴㅈ", "ㄴㅎ", "ㄷ",
+        "ㄹ", "ㄹㄱ", "ㄹㅁ", "ㄹㅂ", "ㄹㅅ", "ㄹㅌ", "ㄹㅍ", "ㄹㅎ", "ㅁ", "ㅂ", "ㅂㅅ", "ㅅ", "ㅆ", "ㅇ",
+        "ㅈ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ",
+    )
+
+    fun toJamoeum(eumjeols: String): String {
+        return eumjeols
+            .map(JamoUtil::toJamoeum)
+            .joinToString("")
+    }
+
+    fun toJamoeum(eumjeol: Char): String {
+        return if (eumjeol.code in 0xAC00..0xD79D) {
+            val startValue = (eumjeol - 0xAC00).code
+            val jong = startValue % 28
+            val jung = (startValue - jong) / 28 % 21
+            val cho = ((startValue - jong) / 28 - jung) / 21
+            mutableListOf<String>().apply {
+                add(CHOSUNG[cho])
+                add(JUNGSUNG[jung])
+                add(JONGSUNG[jong])
+            }
+        } else {
+            listOf(eumjeol.toString())
+        }.joinToString("")
     }
 }

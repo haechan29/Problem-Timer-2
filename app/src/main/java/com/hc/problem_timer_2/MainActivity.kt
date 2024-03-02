@@ -53,8 +53,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
@@ -93,6 +96,7 @@ import androidx.compose.ui.platform.WindowInfo
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -112,12 +116,15 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import androidx.compose.ui.text.font.lerp
 import androidx.compose.ui.text.input.ImeAction
+import com.hc.problem_timer_2.MainActivity.Companion.BOOK_NAME_LENGTH_MAX
 import com.hc.problem_timer_2.MainActivity.Companion.POSITIVE_INTEGER_MATCHER
 import com.hc.problem_timer_2.vo.Book
 import com.hc.problem_timer_2.vo.Problem
 import com.hc.problem_timer_2.vo.ProblemRecord
 import com.hc.problem_timer_2.util.BaseAlertDialog
 import com.hc.problem_timer_2.util.BaseDialog
+import com.hc.problem_timer_2.util.BasicTextFieldWithHint
+import com.hc.problem_timer_2.util.BasicTextFieldWithoutPadding
 import com.hc.problem_timer_2.util.TextWithoutPadding
 import com.hc.problem_timer_2.util.applesdgothicneo
 import com.hc.problem_timer_2.vo.Grade
@@ -152,6 +159,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val POSITIVE_INTEGER_MATCHER = "^([1-9]\\d*)$"
+        const val BOOK_NAME_LENGTH_MAX = 15
     }
 }
 
@@ -164,29 +172,40 @@ fun TimerScreen(
     var problemToUpdate by remember { mutableStateOf<Problem?>(null) }
     var problemToEdit by remember { mutableStateOf<Problem?>(null) }
 
-    Column(
-        modifier = Modifier
-            .background(color = Color.White)
-            .fillMaxSize()
-    ) {
-        BookTab( { isShowingAddBookDialog = true } )
-        Divider(thickness = 1.dp, color = Color.LightGray)
-        AnimatedVisibility(
-            visible = selectedBookInfo!!.isBookSelected(),
-            enter = slideInHorizontally()
+    if (!isShowingAddBookDialog) {
+        Column(
+            modifier = Modifier
+                .background(color = Color.White)
+                .fillMaxSize()
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight()
+            BookTab({ isShowingAddBookDialog = true })
+            Divider(thickness = 1.dp, color = Color.LightGray)
+            AnimatedVisibility(
+                visible = selectedBookInfo!!.isBookSelected(),
+                enter = slideInHorizontally()
             ) {
-                PageTab()
-                Divider(thickness = 1.dp, color = Color.LightGray)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                ) {
+                    PageTab()
+                    Divider(thickness = 1.dp, color = Color.LightGray)
+                }
             }
+            ProblemListTab(
+                { value: Problem -> problemToUpdate = value },
+                { value: Problem -> problemToEdit == value },
+                { problemToEdit = null })
+//        if (isShowingAddBookDialog) AddBookDialog { isShowingAddBookDialog = false }
+            if (problemToUpdate != null) UpdateProblemDialog(
+                problemToUpdate!!,
+                { problemToUpdate = null },
+                { problemToEdit = problemToUpdate })
         }
-        ProblemListTab({ value: Problem -> problemToUpdate = value }, { value: Problem -> problemToEdit == value }, { problemToEdit = null })
-        if (isShowingAddBookDialog) AddBookDialog { isShowingAddBookDialog = false }
-        if (problemToUpdate != null) UpdateProblemDialog(problemToUpdate!!, { problemToUpdate = null }, { problemToEdit = problemToUpdate })
+    }
+    if (isShowingAddBookDialog) {
+        AddBookScreen( { isShowingAddBookDialog = false } )
     }
 }
 
@@ -289,7 +308,11 @@ fun BookButton(
     ) {
         Box(
             modifier = Modifier
-                .padding(top = paddingTopForDeleteBookBtn, bottom = paddingTopForDeleteBookBtn, end = paddingEndForDeleteBookBtn)
+                .padding(
+                    top = paddingTopForDeleteBookBtn,
+                    bottom = paddingTopForDeleteBookBtn,
+                    end = paddingEndForDeleteBookBtn
+                )
                 .height(30.dp)
                 .background(
                     color = if (isSelected) colorResource(R.color.black_200) else Color.Transparent,
@@ -300,7 +323,12 @@ fun BookButton(
             TextWithoutPadding(
                 modifier = Modifier
                     .combinedClickable(
-                        onClick = selectBook,
+                        onClick = {
+                            selectBook()
+                            if (isDeleteBookBtnVisible()) {
+                                toggleVisibilityOfDeleteButton()
+                            }
+                        },
                         onLongClick = toggleVisibilityOfDeleteButton
                     ),
                 text = book.name,
@@ -342,7 +370,9 @@ fun AddBookButton(showAddBookDialog: () -> Unit) {
             .height(30.dp)
             .background(color = colorResource(R.color.black_200), shape = RoundedCornerShape(10.dp))
             .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
-            .clickable { showAddBookDialog() },
+            .clickable {
+                showAddBookDialog()
+            },
         verticalAlignment = Alignment.CenterVertically
     ) {
         TextWithoutPadding(
@@ -401,6 +431,110 @@ fun AddBookDialog(
         onConfirm = { bookListViewModel.addBook(Book(name = bookName)) },
         hideDialog = hideDialog
     )
+}
+
+@Composable
+fun AddBookScreen(hideAddBookScreen: () -> Unit) {
+    Column(modifier = Modifier.background(Color.White)) {
+        SearchBarTab(hideAddBookScreen)
+        SearchResultTab()
+    }
+}
+
+@Composable
+fun SearchBarTab(
+    hideAddBookScreen: () -> Unit,
+    bookListViewModel: BookListViewModel = viewModel(),
+    scope: CoroutineScope = rememberCoroutineScope()
+) {
+    var bookNameInput by remember { mutableStateOf("") }
+    Row(
+        modifier = Modifier.padding(top = 8.dp, bottom = 8.dp, end = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            modifier = Modifier
+                .size(32.dp)
+                .clickable { hideAddBookScreen() },
+            imageVector = Icons.Default.KeyboardArrowLeft,
+            contentDescription = "back to timer screen"
+        )
+        Row(
+            modifier = Modifier
+                .wrapContentHeight()
+                .background(
+                    color = colorResource(id = R.color.black_200),
+                    shape = RoundedCornerShape(10.dp)
+                )
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                modifier = Modifier.size(24.dp),
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+                tint = colorResource(id = R.color.black_500)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            BasicTextFieldWithHint(
+                modifier = Modifier
+                    .weight(1f)
+                    .wrapContentHeight()
+                    .padding(vertical = 1.dp),
+                value = bookNameInput,
+                onValueChange = { if (it.length <= BOOK_NAME_LENGTH_MAX) bookNameInput = it },
+                textStyle = TextStyle(
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    fontFamily = notosanskr,
+                    color = colorResource(id = R.color.black_500)
+                ),
+                hint = "추가할 교재 이름을 입력해주세요",
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Text,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(onDone = {
+                    if (bookNameInput.isNotEmpty()) {
+                        bookListViewModel.addBook(Book(name = bookNameInput))
+                        hideAddBookScreen()
+                    }
+                    bookNameInput = ""
+                }),
+                singleLine = true,
+                maxLines = 1,
+                decorationBox = { innerTextField ->
+                    innerTextField()
+                }
+            )
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .background(color = colorResource(id = R.color.black_500), shape = CircleShape)
+                    .clickable {
+                        scope.launch {
+                            while (bookNameInput.isNotEmpty()) {
+                                delay(50)
+                                bookNameInput = bookNameInput.slice(0 until bookNameInput.lastIndex)
+                            }
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    modifier = Modifier.size(10.dp),
+                    imageVector = Icons.Default.Clear,
+                    contentDescription = "clear book name input",
+                    tint = Color.White
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SearchResultTab() {
+
 }
 
 @Composable

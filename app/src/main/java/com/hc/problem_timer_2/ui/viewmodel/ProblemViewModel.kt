@@ -3,6 +3,7 @@ package com.hc.problem_timer_2.ui.viewmodel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.map
 import androidx.lifecycle.viewModelScope
 import com.hc.problem_timer_2.data.repository.ProblemRepository
 import com.hc.problem_timer_2.data.vo.Problem
@@ -12,18 +13,44 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.lang.Exception
+import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
-class ProblemListViewModel @Inject constructor(private val problemRepository: ProblemRepository): ViewModel() {
+class ProblemViewModel @Inject constructor(private val problemRepository: ProblemRepository): ViewModel() {
     private val _problems = MutableLiveData<List<Problem>>(emptyList())
     val problems: LiveData<List<Problem>> get() = _problems
+
+    private val _problemToEdit = MutableLiveData<Problem?>()
+    val isEditingProblem = _problemToEdit.map { it != null }
 
     fun getProblems() {
         viewModelScope.launch {
             _problems.value = withContext(Dispatchers.IO) { problemRepository.getAll() }!!
         }
+    }
+
+    fun isProblemNumberDuplicated(problem: Problem, number: String)= withProblemsOfSelectedBookNotNull { problems ->
+        val problemsOnnSamePage = problems
+            .onBook(problem.bookId)
+            .onPage(problem.page)
+        number in problemsOnnSamePage.map { it.number }
+    }
+
+    fun setProblemToEdit(problem: Problem) = viewModelScope.launch { _problemToEdit.value = problem }
+    fun unsetProblemToEdit() = viewModelScope.launch { _problemToEdit.value = null }
+
+    fun addSequentialProblemOfProblemToEdit() = withProblemToEditNotNull { problem ->
+        val problemWithoutId = problem.copy(id = 0L)
+        val nextSubProblem = problemWithoutId.copy(subNumber =
+            if (_problemToEdit.value!!.isMainProblem()) "1"
+            else "${_problemToEdit.value!!.subNumber!!.toInt() + 1}"
+        )
+        addProblem(nextSubProblem)
+    }
+
+    fun deleteProblemToEdit() = withProblemToEditNotNull { problem ->
+        deleteProblem(problem)
     }
 
     fun addProblem(problem: Problem) = doIOAndGetProblemsOfSelectedBook {
@@ -39,27 +66,9 @@ class ProblemListViewModel @Inject constructor(private val problemRepository: Pr
         problemRepository.delete(problem)
     }
 
-    fun deleteProblemsOnBook(bookId: Long) = doIOAndGetProblemsOfSelectedBook {
-        val problemsOnBook = problems.value!!.onBook(bookId)
-        problemRepository.deleteAll(problemsOnBook)
-    }
-
     fun addDefaultProblems(bookId: Long) = doIOAndGetProblemsOfSelectedBook {
         problemRepository.insertAll(getDefaultProblems(bookId = bookId))
     }
-
-    fun isProblemNumberDuplicated(problem: Problem, number: String)= withProblemsOfSelectedBookNotNull { problems ->
-        val problemsOnnSamePage = problems
-            .onBook(problem.bookId)
-            .onPage(problem.page)
-        number in problemsOnnSamePage.map { it.number }
-    }
-
-    private fun getLastProblem(bookId: Long) = problems.value!!
-        .filter { it.bookId == bookId }
-        .maxOfOrNull { it }
-
-    fun isLastProblem(problem: Problem) = problem.number == getLastProblem(problem.bookId)?.number
 
     private fun getDefaultProblems(bookId: Long): List<Problem> {
         if (bookId == 0L) throw UninitializedPropertyAccessException("book is not initialized")
@@ -75,9 +84,24 @@ class ProblemListViewModel @Inject constructor(private val problemRepository: Pr
         }.flatten()
     }
 
+    private fun getLastProblem(bookId: Long) = problems.value!!
+        .filter { it.bookId == bookId }
+        .maxOfOrNull { it }
+
+    fun deleteProblemsOnBook(bookId: Long) = doIOAndGetProblemsOfSelectedBook {
+        val problemsOnBook = problems.value!!.onBook(bookId)
+        problemRepository.deleteAll(problemsOnBook)
+    }
+
     private fun <R> withProblemsOfSelectedBookNotNull(f: (List<Problem>) -> R): R {
         if (problems.value.isNullOrEmpty()) throw UninitializedPropertyAccessException("problemsOfSelectedBook not initialized")
         return f(problems.value!!)
+    }
+
+    private fun withProblemToEditNotNull(f: (Problem) -> Unit) {
+        if (_problemToEdit.value == null) throw UninitializedPropertyAccessException("problemToEdit not initialized")
+        f(_problemToEdit.value!!)
+        unsetProblemToEdit()
     }
 
     private fun doIOAndGetProblemsOfSelectedBook(f: suspend () -> Unit) {

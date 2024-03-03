@@ -49,7 +49,7 @@ import com.hc.problem_timer_2.ui.view.BasicTextFieldWithHint
 import com.hc.problem_timer_2.util.JamoUtil
 import com.hc.problem_timer_2.ui.view.TextWithoutPadding
 import com.hc.problem_timer_2.util.notosanskr
-import com.hc.problem_timer_2.ui.viewmodel.BookListViewModel
+import com.hc.problem_timer_2.ui.viewmodel.BookViewModel
 import com.hc.problem_timer_2.data.vo.Book
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -58,10 +58,10 @@ import kotlinx.coroutines.launch
 @Composable
 fun AddBookScreen(
     hideAddBookScreen: () -> Unit,
-    bookListViewModel: BookListViewModel = viewModel()
+    bookViewModel: BookViewModel = viewModel()
 ) {
     var bookNameInput by remember { mutableStateOf("") }
-    val addBook = { book: Book -> bookListViewModel.addBook(book) }
+    val addBook = { book: Book -> bookViewModel.addBook(book) }
     Column(modifier = Modifier.background(Color.White)) {
         SearchBarTab({ bookNameInput }, { value: String -> bookNameInput = value }, addBook, hideAddBookScreen)
         Spacer(modifier = Modifier.height(12.dp))

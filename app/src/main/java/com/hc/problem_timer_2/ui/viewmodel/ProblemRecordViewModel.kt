@@ -10,11 +10,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
-class ProblemRecordListViewModel @Inject constructor(private val problemRecordRepository: ProblemRecordRepository): ViewModel() {
+class ProblemRecordViewModel @Inject constructor(private val problemRecordRepository: ProblemRecordRepository): ViewModel() {
     private val _problemRecordListOnSelectedPage = MutableLiveData(listOf<ProblemRecord>())
     val problemRecordListOnSelectedPage: LiveData<List<ProblemRecord>> get() = _problemRecordListOnSelectedPage
 

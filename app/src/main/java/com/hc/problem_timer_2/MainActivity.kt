@@ -26,6 +26,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -33,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -43,10 +45,13 @@ import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.WindowInfo
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -55,8 +60,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hc.problem_timer_2.ui.theme.ProblemTimer2Theme
 import com.hc.problem_timer_2.util.TimberDebugTree
-import com.hc.problem_timer_2.ui.viewmodel.BookListViewModel
-import com.hc.problem_timer_2.ui.viewmodel.ProblemRecordListViewModel
+import com.hc.problem_timer_2.ui.viewmodel.BookViewModel
+import com.hc.problem_timer_2.ui.viewmodel.ProblemRecordViewModel
 import timber.log.Timber
 import androidx.compose.ui.text.input.ImeAction
 import com.hc.problem_timer_2.MainActivity.Companion.POSITIVE_INTEGER_MATCHER
@@ -67,7 +72,7 @@ import com.hc.problem_timer_2.ui.view.BaseDialog
 import com.hc.problem_timer_2.ui.view.BottomSheetDialog
 import com.hc.problem_timer_2.ui.view.BottomSheetDialogItem
 import com.hc.problem_timer_2.ui.view.customToast
-import com.hc.problem_timer_2.ui.viewmodel.ProblemListViewModel
+import com.hc.problem_timer_2.ui.viewmodel.ProblemViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -96,31 +101,47 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun TimerApp() {
-    var isShowingAddBookScreen by remember { mutableStateOf(false) }
-    var isEditProblemDialogVisible by remember { mutableStateOf(false) }
+fun TimerApp(
+    problemViewModel: ProblemViewModel = viewModel()
+) {
+    var isAddBookScreenVisible by remember { mutableStateOf(false) }
+    val isEditingProblem by problemViewModel.isEditingProblem.observeAsState()
+
     AnimatedVisibility(
-        visible = !isShowingAddBookScreen,
+        visible = !isAddBookScreenVisible,
         enter = slideInHorizontally() + fadeIn(),
         exit = slideOutHorizontally() + fadeOut()
     ) {
-        TimerScreen({ isShowingAddBookScreen = true }, { isEditProblemDialogVisible = true })
+        TimerScreen({ isAddBookScreenVisible = true })
     }
     BottomSheetDialog(
         title = "문제 수정",
         items = listOf(
-            BottomSheetDialogItem(Icons.Default.Add, "꼬리 문제 추가", {}),
-            BottomSheetDialogItem(Icons.Default.Edit, "전체 문제 수정", {})
+            BottomSheetDialogItem(
+                ImageVector.vectorResource(id = R.drawable.remove_black_24dp),
+                "문제 삭제",
+                { problemViewModel.deleteProblemToEdit() }
+            ),
+            BottomSheetDialogItem(
+                Icons.Default.Add,
+                "꼬리 문제 추가",
+                { problemViewModel.addSequentialProblemOfProblemToEdit() }
+            ),
+            BottomSheetDialogItem(
+                Icons.Default.Edit,
+                "전체 문제 수정",
+                {}
+            )
         ),
-        isEditProblemDialogVisible,
-        { isEditProblemDialogVisible = false }
+        isEditingProblem ?: false,
+        { problemViewModel.unsetProblemToEdit() }
     )
     AnimatedVisibility(
-        visible = isShowingAddBookScreen,
+        visible = isAddBookScreenVisible,
         enter = slideInHorizontally { it },
         exit = slideOutHorizontally { it }
     ) {
-        AddBookScreen( { isShowingAddBookScreen = false } )
+        AddBookScreen( { isAddBookScreenVisible = false } )
     }
 }
 
@@ -135,7 +156,7 @@ fun ProblemNumberBodyTab(
     focusManager: FocusManager = LocalFocusManager.current,
     focusRequester: FocusRequester = remember { FocusRequester() },
     windowInfo: WindowInfo = LocalWindowInfo.current,
-    problemListViewModel: ProblemListViewModel = viewModel()
+    problemViewModel: ProblemViewModel = viewModel()
 ) {
     var problemNumberInput by remember { mutableStateOf("") }
 
@@ -170,11 +191,11 @@ fun ProblemNumberBodyTab(
                 if (!isPositiveInteger(problemNumberInput)) {
                     customToast(context.getString(R.string.invalid_number_input), context)
                     problemNumberInput = problem.number
-                } else if (problemListViewModel.isProblemNumberDuplicated(problem, problemNumberInput)) {
+                } else if (problemViewModel.isProblemNumberDuplicated(problem, problemNumberInput)) {
                     customToast(context.getString(R.string.duplicated_number_input), context)
                     problemNumberInput = problem.number
                 } else {
-                    problemListViewModel.updateProblemNumber(problem, problemNumberInput)
+                    problemViewModel.updateProblemNumber(problem, problemNumberInput)
                 }
                 focusManager.clearFocus()
                 finishEditingProblem()
@@ -197,7 +218,7 @@ fun ProblemNumberBodyTab(
 
 
 @Composable
-fun UpdateProblemDialog(problem: Problem, hideDialog: () -> Unit, editProblem: () -> Unit, problemListViewModel: ProblemListViewModel = viewModel()) {
+fun UpdateProblemDialog(problem: Problem, hideDialog: () -> Unit, editProblem: () -> Unit, problemViewModel: ProblemViewModel = viewModel()) {
     val problemWithoutId = problem.copy(id = 0L)
     val nextSubProblem = problemWithoutId.copy(subNumber = if (problem.isMainProblem()) "1" else "${problem.subNumber!!.toInt() + 1}")
     val nextMainProblem = problemWithoutId.copy(mainNumber = "${problem.mainNumber.toInt() + 1}").copy(subNumber = null)
@@ -205,19 +226,19 @@ fun UpdateProblemDialog(problem: Problem, hideDialog: () -> Unit, editProblem: (
     BaseDialog(
         text = {
             Column {
-                if (!problemListViewModel.isProblemNumberDuplicated(problem, nextSubProblem.number)) {
+                if (!problemViewModel.isProblemNumberDuplicated(problem, nextSubProblem.number)) {
                     DialogButton(
                         onClick = {
-                            problemListViewModel.addProblem(nextSubProblem)
+                            problemViewModel.addProblem(nextSubProblem)
                             hideDialog()
                         },
                         text = "${nextSubProblem.number}번 문제 추가하기"
                     )
                 }
-                if (!problemListViewModel.isProblemNumberDuplicated(problem, nextMainProblem.number)) {
+                if (!problemViewModel.isProblemNumberDuplicated(problem, nextMainProblem.number)) {
                     DialogButton(
                         onClick = {
-                            problemListViewModel.addProblem(nextMainProblem)
+                            problemViewModel.addProblem(nextMainProblem)
                             hideDialog()
                         },
                         text = "${nextMainProblem.number}번 문제 추가하기"
@@ -232,7 +253,7 @@ fun UpdateProblemDialog(problem: Problem, hideDialog: () -> Unit, editProblem: (
                 )
                 DialogButton(
                     onClick = {
-                        problemListViewModel.deleteProblem(problem)
+                        problemViewModel.deleteProblem(problem)
                         hideDialog()
                     },
                     text = "${problem.number}번 문제 삭제하기"
@@ -265,14 +286,14 @@ fun DialogButton(onClick: () -> Unit, text: String) {
 }
 
 fun ComponentActivity.getDataFromLocalDB() {
-    val bookListViewModel: BookListViewModel by viewModels()
-    bookListViewModel.getBookList()
+    val bookViewModel: BookViewModel by viewModels()
+    bookViewModel.getBookList()
 
-    val problemListViewModel: ProblemListViewModel by viewModels()
-    problemListViewModel.getProblems()
+    val problemViewModel: ProblemViewModel by viewModels()
+    problemViewModel.getProblems()
 
-    val problemRecordListViewModel: ProblemRecordListViewModel by viewModels()
-    problemRecordListViewModel.getProblemRecords()
+    val problemRecordViewModel: ProblemRecordViewModel by viewModels()
+    problemRecordViewModel.getProblemRecords()
 }
 
 fun isPositiveInteger(s: String) = s.matches(POSITIVE_INTEGER_MATCHER.toRegex())

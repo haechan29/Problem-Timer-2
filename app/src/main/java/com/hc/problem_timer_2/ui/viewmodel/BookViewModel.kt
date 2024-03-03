@@ -13,7 +13,7 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
-class BookListViewModel @Inject constructor(private val bookRepository: BookRepository): ViewModel() {
+class BookViewModel @Inject constructor(private val bookRepository: BookRepository): ViewModel() {
     private val _bookList = MutableLiveData(listOf<Book>())
     val bookList: LiveData<List<Book>> get() = _bookList
 

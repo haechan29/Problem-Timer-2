@@ -76,9 +76,9 @@ import com.hc.problem_timer_2.util.added
 import com.hc.problem_timer_2.util.applesdgothicneo
 import com.hc.problem_timer_2.util.getNow
 import com.hc.problem_timer_2.util.notosanskr
-import com.hc.problem_timer_2.ui.viewmodel.BookListViewModel
-import com.hc.problem_timer_2.ui.viewmodel.ProblemListViewModel
-import com.hc.problem_timer_2.ui.viewmodel.ProblemRecordListViewModel
+import com.hc.problem_timer_2.ui.viewmodel.BookViewModel
+import com.hc.problem_timer_2.ui.viewmodel.ProblemViewModel
+import com.hc.problem_timer_2.ui.viewmodel.ProblemRecordViewModel
 import com.hc.problem_timer_2.ui.viewmodel.SelectedBookInfoViewModel
 import com.hc.problem_timer_2.data.vo.Book
 import com.hc.problem_timer_2.data.vo.Grade
@@ -93,7 +93,6 @@ import kotlinx.coroutines.launch
 @Composable
 fun TimerScreen(
     showAddBookScreen: () -> Unit,
-    editProblem: () -> Unit,
     selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel()
 ) {
     val selectedBookInfo by selectedBookInfoViewModel.selectedBookInfo.observeAsState()
@@ -105,7 +104,7 @@ fun TimerScreen(
             .background(color = Color.White)
             .fillMaxSize()
     ) {
-        BookTab(showAddBookScreen, editProblem)
+        BookTab(showAddBookScreen)
         Divider(thickness = 1.dp, color = Color.LightGray)
         AnimatedVisibility(
             visible = selectedBookInfo!!.isBookSelected(),
@@ -135,16 +134,14 @@ fun TimerScreen(
 @Composable
 fun BookTab(
     showAddBookScreen: () -> Unit,
-    editProblem: () -> Unit,
-    bookListViewModel: BookListViewModel = viewModel(),
+    bookViewModel: BookViewModel = viewModel(),
     selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel()
 ) {
-    val books by bookListViewModel.bookList.observeAsState()
+    val books by bookViewModel.bookList.observeAsState()
     val selectedBookInfo by selectedBookInfoViewModel.selectedBookInfo.observeAsState()
     var isShowingDeleteBookBtn by remember { mutableStateOf(false) }
 
     BookTabStateless(
-        editProblem,
         books!!,
         { book: Book -> selectedBookInfo!!.selectedBook == book },
         { book: Book -> selectedBookInfoViewModel.select(book) },
@@ -156,7 +153,6 @@ fun BookTab(
 
 @Composable
 fun BookTabStateless(
-    editProblem: () -> Unit,
     books: List<Book>,
     isSelected: (Book) -> Boolean,
     selectBook: (Book) -> Unit,
@@ -167,7 +163,6 @@ fun BookTabStateless(
     Row(
         modifier = Modifier
             .height(50.dp)
-            .clickable { editProblem() }
             .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -222,8 +217,8 @@ fun BookButton(
     selectBook: () -> Unit,
     isDeleteBookBtnVisible: () -> Boolean,
     toggleVisibilityOfDeleteButton: () -> Unit,
-    bookListViewModel: BookListViewModel = viewModel(),
-    problemListViewModel: ProblemListViewModel = viewModel(),
+    bookViewModel: BookViewModel = viewModel(),
+    problemViewModel: ProblemViewModel = viewModel(),
     selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel()
 ) {
     val paddingTopForDeleteBookBtn = 3.dp
@@ -272,8 +267,8 @@ fun BookButton(
                     .background(color = Color.Black, shape = CircleShape)
                     .clickable {
                         selectedBookInfoViewModel.unselect()
-                        bookListViewModel.deleteBook(book.id)
-                        problemListViewModel.deleteProblemsOnBook(book.id)
+                        bookViewModel.deleteBook(book.id)
+                        problemViewModel.deleteProblemsOnBook(book.id)
                         toggleVisibilityOfDeleteButton()
                     },
                 contentAlignment = Alignment.Center
@@ -323,19 +318,19 @@ fun AddBookButton(showAddBookScreen: () -> Unit) {
 @Composable
 fun PageTab(
     selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel(),
-    problemListViewModel: ProblemListViewModel = viewModel(),
+    problemViewModel: ProblemViewModel = viewModel(),
     scope: CoroutineScope = rememberCoroutineScope(),
     listState: LazyListState = rememberLazyListState()
 ) {
     val bookInfo by selectedBookInfoViewModel.selectedBookInfo.observeAsState()
-    val problems by problemListViewModel.problems.observeAsState()
+    val problems by problemViewModel.problems.observeAsState()
     if (!bookInfo!!.isBookSelected()) return
     val pages = problems!!
         .filter { it.bookId == bookInfo!!.selectedBook!!.id }
         .map { it.page }
         .distinct()
     if (pages.isEmpty()) {
-        problemListViewModel.addDefaultProblems(bookInfo!!.selectedBook!!.id)
+        problemViewModel.addDefaultProblems(bookInfo!!.selectedBook!!.id)
     } else {
         if (!bookInfo!!.isPageSelected()) {
             selectedBookInfoViewModel.select(pages.first())
@@ -395,7 +390,7 @@ fun PageTab(
         )
         AddPageButton {
             val bookId = bookInfo!!.selectedBook!!.id
-            problemListViewModel.addDefaultProblems(bookId)
+            problemViewModel.addDefaultProblems(bookId)
         }
     }
 }
@@ -466,11 +461,11 @@ fun ColumnScope.ProblemTab(
     isProblemEditing: (Problem) -> Boolean,
     finishEditingProblem: () -> Unit,
     selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel(),
-    problemListViewModel: ProblemListViewModel = viewModel(),
-    problemRecordListViewModel: ProblemRecordListViewModel = viewModel()
+    problemViewModel: ProblemViewModel = viewModel(),
+    problemRecordViewModel: ProblemRecordViewModel = viewModel()
 ) {
-    val problems by problemListViewModel.problems.observeAsState()
-    val problemRecordList by problemRecordListViewModel.problemRecordListOnSelectedPage.observeAsState()
+    val problems by problemViewModel.problems.observeAsState()
+    val problemRecordList by problemRecordViewModel.problemRecordListOnSelectedPage.observeAsState()
     val selectedBookInfo by selectedBookInfoViewModel.selectedBookInfo.observeAsState()
     val problemsOnSelectedPage = problems!!
         .onBook(selectedBookInfo!!.selectedBook?.id)
@@ -636,7 +631,7 @@ fun ColumnScope.ProblemBodyTab(
     isProblemEditing: (Problem) -> Boolean,
     finishEditingProblem: () -> Unit,
     isGradeMode: () -> Boolean,
-    problemRecordListViewModel: ProblemRecordListViewModel = viewModel()
+    problemRecordViewModel: ProblemRecordViewModel = viewModel()
 ) {
     LazyColumn(
         modifier = Modifier
@@ -653,7 +648,7 @@ fun ColumnScope.ProblemBodyTab(
             var currentTimeRecord by remember { mutableIntStateOf(0) }
             var currentGrade by remember { mutableStateOf(Grade.Unranked) }
             val addProblemRecord = {
-                problemRecordListViewModel.addProblemRecord(
+                problemRecordViewModel.addProblemRecord(
                     ProblemRecord(
                         bookId = problem.bookId,
                         page = problem.page,
@@ -858,12 +853,17 @@ fun ProblemContentTab(
 }
 
 @Composable
-fun ProblemNumberTab(problem: Problem, getCurrentGrade: () -> Grade) {
+fun ProblemNumberTab(
+    problem: Problem,
+    getCurrentGrade: () -> Grade,
+    problemViewModel: ProblemViewModel = viewModel()
+) {
     Box(
         modifier = Modifier
-            .padding(vertical = 5.dp)
             .size(40.dp)
-            .background(color = getCurrentGrade().color, shape = RoundedCornerShape(10.dp)),
+            .background(color = getCurrentGrade().color, shape = RoundedCornerShape(10.dp))
+            .clickable { problemViewModel.setProblemToEdit(problem) }
+            .padding(vertical = 5.dp),
         contentAlignment = Alignment.Center
     ) {
         TextWithoutPadding(

@@ -71,21 +71,21 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hc.problem_timer_2.R
 import com.hc.problem_timer_2.UpdateProblemDialog
-import com.hc.problem_timer_2.util.TextWithoutPadding
+import com.hc.problem_timer_2.ui.view.TextWithoutPadding
 import com.hc.problem_timer_2.util.added
 import com.hc.problem_timer_2.util.applesdgothicneo
 import com.hc.problem_timer_2.util.getNow
 import com.hc.problem_timer_2.util.notosanskr
-import com.hc.problem_timer_2.viewmodel.BookListViewModel
-import com.hc.problem_timer_2.viewmodel.ProblemListViewModel
-import com.hc.problem_timer_2.viewmodel.ProblemRecordListViewModel
-import com.hc.problem_timer_2.viewmodel.SelectedBookInfoViewModel
-import com.hc.problem_timer_2.vo.Book
-import com.hc.problem_timer_2.vo.Grade
-import com.hc.problem_timer_2.vo.Problem
-import com.hc.problem_timer_2.vo.ProblemRecord
-import com.hc.problem_timer_2.vo.onBook
-import com.hc.problem_timer_2.vo.onPage
+import com.hc.problem_timer_2.ui.viewmodel.BookListViewModel
+import com.hc.problem_timer_2.ui.viewmodel.ProblemListViewModel
+import com.hc.problem_timer_2.ui.viewmodel.ProblemRecordListViewModel
+import com.hc.problem_timer_2.ui.viewmodel.SelectedBookInfoViewModel
+import com.hc.problem_timer_2.data.vo.Book
+import com.hc.problem_timer_2.data.vo.Grade
+import com.hc.problem_timer_2.data.vo.Problem
+import com.hc.problem_timer_2.data.vo.ProblemRecord
+import com.hc.problem_timer_2.data.vo.onBook
+import com.hc.problem_timer_2.data.vo.onPage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -93,6 +93,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun TimerScreen(
     showAddBookScreen: () -> Unit,
+    editProblem: () -> Unit,
     selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel()
 ) {
     val selectedBookInfo by selectedBookInfoViewModel.selectedBookInfo.observeAsState()
@@ -104,7 +105,7 @@ fun TimerScreen(
             .background(color = Color.White)
             .fillMaxSize()
     ) {
-        BookTab(showAddBookScreen)
+        BookTab(showAddBookScreen, editProblem)
         Divider(thickness = 1.dp, color = Color.LightGray)
         AnimatedVisibility(
             visible = selectedBookInfo!!.isBookSelected(),
@@ -134,6 +135,7 @@ fun TimerScreen(
 @Composable
 fun BookTab(
     showAddBookScreen: () -> Unit,
+    editProblem: () -> Unit,
     bookListViewModel: BookListViewModel = viewModel(),
     selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel()
 ) {
@@ -142,6 +144,7 @@ fun BookTab(
     var isShowingDeleteBookBtn by remember { mutableStateOf(false) }
 
     BookTabStateless(
+        editProblem,
         books!!,
         { book: Book -> selectedBookInfo!!.selectedBook == book },
         { book: Book -> selectedBookInfoViewModel.select(book) },
@@ -153,6 +156,7 @@ fun BookTab(
 
 @Composable
 fun BookTabStateless(
+    editProblem: () -> Unit,
     books: List<Book>,
     isSelected: (Book) -> Boolean,
     selectBook: (Book) -> Unit,
@@ -163,6 +167,7 @@ fun BookTabStateless(
     Row(
         modifier = Modifier
             .height(50.dp)
+            .clickable { editProblem() }
             .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -717,72 +722,106 @@ fun ProblemAndProblemRecordTabStateless(
         )
     ) {
         if (isGradeMode()) {
-            Row(
-                modifier = Modifier
-                    .background(color = Color.White)
-                    .padding(all = 20.dp)
-                    .fillMaxWidth()
-                    .wrapContentHeight(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                ProblemNumberTab(problem, getCurrentGrade)
-                Spacer(Modifier.width(24.dp))
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(40.dp)
-                        .clickable { setNextGrade() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    TextWithoutPadding(
-                        modifier = Modifier.wrapContentWidth(),
-                        textAlign = TextAlign.Center,
-                        text = getCurrentGrade().text,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Normal,
-                        fontFamily = notosanskr,
-                        color = getCurrentGrade().color
-                    )
-                }
-            }
+            ProblemAndProblemRecordInGradeModeTabStateless(
+                problem,
+                getCurrentGrade,
+                setNextGrade
+            )
         } else {
+            ProblemAndProblemRecordInNormalModeTabStateless(
+                problem,
+                getCurrentTimeRecord,
+                increaseCurrentTimeRecord,
+                getCurrentGrade,
+                isShowingProblemRecords,
+                problemRecords,
+                { setShowingProblemRecords(!isShowingProblemRecords()) }
+            )
+        }
+    }
+}
+
+@Composable
+fun ProblemAndProblemRecordInGradeModeTabStateless(
+    problem: Problem,
+    getCurrentGrade: () -> Grade,
+    setNextGrade: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .background(color = Color.White)
+            .padding(all = 20.dp)
+            .fillMaxWidth()
+            .wrapContentHeight(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        ProblemNumberTab(problem, getCurrentGrade)
+        Spacer(Modifier.width(24.dp))
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(40.dp)
+                .clickable { setNextGrade() },
+            contentAlignment = Alignment.Center
+        ) {
+            TextWithoutPadding(
+                modifier = Modifier.wrapContentWidth(),
+                textAlign = TextAlign.Center,
+                text = getCurrentGrade().text,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Normal,
+                fontFamily = notosanskr,
+                color = getCurrentGrade().color
+            )
+        }
+    }
+}
+
+@Composable
+fun ProblemAndProblemRecordInNormalModeTabStateless(
+    problem: Problem,
+    getCurrentTimeRecord: () -> Int,
+    increaseCurrentTimeRecord: (Int) -> Unit,
+    getCurrentGrade: () -> Grade,
+    isShowingProblemRecords: () -> Boolean,
+    problemRecords: List<ProblemRecord>,
+    toggleVisibilityOfProblemRecords: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .background(color = Color.White)
+            .padding(all = 20.dp)
+            .fillMaxWidth()
+            .wrapContentHeight()
+    ) {
+        ProblemContentTab(problem, getCurrentTimeRecord, increaseCurrentTimeRecord, getCurrentGrade)
+        AnimatedVisibility(
+            visible = isShowingProblemRecords(),
+            enter = expandVertically(expandFrom = Alignment.Top),
+            exit = shrinkVertically(shrinkTowards = Alignment.Top)
+        ) {
             Column(
                 modifier = Modifier
-                    .background(color = Color.White)
-                    .padding(all = 20.dp)
                     .fillMaxWidth()
                     .wrapContentHeight()
             ) {
-                ProblemContentTab(problem, getCurrentTimeRecord, increaseCurrentTimeRecord, getCurrentGrade)
-                AnimatedVisibility(
-                    visible = isShowingProblemRecords(),
-                    enter = expandVertically(expandFrom = Alignment.Top),
-                    exit = shrinkVertically(shrinkTowards = Alignment.Top)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .wrapContentHeight()
-                    ) {
-                        Spacer(modifier = Modifier.height(20.dp))
-                        ProblemRecordListTab(problemRecords)
-                    }
-                }
-                Spacer(modifier = Modifier.height(15.dp))
-                Divider(
-                    modifier = Modifier
-                        .padding(horizontal = 5.dp)
-                        .fillMaxWidth()
-                        .height(1.dp)
-                        .background(color = colorResource(id = R.color.black_300))
-                )
-                Spacer(modifier = Modifier.height(15.dp))
-                ProblemRecordViewMoreTab(
-                    isShowingProblemRecords,
-                    { setShowingProblemRecords(!isShowingProblemRecords()) }
-                )
+                Spacer(modifier = Modifier.height(20.dp))
+                ProblemRecordListTab(problemRecords)
             }
         }
+        Spacer(modifier = Modifier.height(15.dp))
+        Divider(
+            modifier = Modifier
+                .padding(horizontal = 5.dp)
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(color = colorResource(id = R.color.black_300))
+        )
+        Spacer(modifier = Modifier.height(15.dp))
+        ProblemRecordViewMoreTab(
+            isShowingProblemRecords,
+            toggleVisibilityOfProblemRecords
+        )
     }
 }
 

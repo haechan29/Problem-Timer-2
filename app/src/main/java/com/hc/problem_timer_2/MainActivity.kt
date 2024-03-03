@@ -6,70 +6,35 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -78,51 +43,31 @@ import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.WindowInfo
-import androidx.compose.ui.res.colorResource
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.hc.problem_timer_2.ui.theme.Primary
 import com.hc.problem_timer_2.ui.theme.ProblemTimer2Theme
 import com.hc.problem_timer_2.util.TimberDebugTree
-import com.hc.problem_timer_2.util.added
-import com.hc.problem_timer_2.viewmodel.BookListViewModel
-import com.hc.problem_timer_2.viewmodel.ProblemRecordListViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import com.hc.problem_timer_2.ui.viewmodel.BookListViewModel
+import com.hc.problem_timer_2.ui.viewmodel.ProblemRecordListViewModel
 import timber.log.Timber
-import androidx.compose.ui.text.font.lerp
 import androidx.compose.ui.text.input.ImeAction
 import com.hc.problem_timer_2.MainActivity.Companion.POSITIVE_INTEGER_MATCHER
 import com.hc.problem_timer_2.ui.screen.AddBookScreen
 import com.hc.problem_timer_2.ui.screen.TimerScreen
-import com.hc.problem_timer_2.vo.Book
-import com.hc.problem_timer_2.vo.Problem
-import com.hc.problem_timer_2.vo.ProblemRecord
-import com.hc.problem_timer_2.util.BaseDialog
-import com.hc.problem_timer_2.util.TextWithoutPadding
-import com.hc.problem_timer_2.util.applesdgothicneo
-import com.hc.problem_timer_2.vo.Grade
-import com.hc.problem_timer_2.vo.Grade.*
-import com.hc.problem_timer_2.util.customToast
-import com.hc.problem_timer_2.util.getNow
-import com.hc.problem_timer_2.util.notosanskr
-import com.hc.problem_timer_2.viewmodel.SelectedBookInfoViewModel
-import com.hc.problem_timer_2.viewmodel.ProblemListViewModel
-import com.hc.problem_timer_2.vo.onBook
-import com.hc.problem_timer_2.vo.onPage
+import com.hc.problem_timer_2.data.vo.Problem
+import com.hc.problem_timer_2.ui.view.BaseDialog
+import com.hc.problem_timer_2.ui.view.BottomSheetDialog
+import com.hc.problem_timer_2.ui.view.BottomSheetDialogItem
+import com.hc.problem_timer_2.ui.view.customToast
+import com.hc.problem_timer_2.ui.viewmodel.ProblemListViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -153,15 +98,23 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun TimerApp() {
     var isShowingAddBookScreen by remember { mutableStateOf(false) }
-
-
+    var isEditProblemDialogVisible by remember { mutableStateOf(false) }
     AnimatedVisibility(
         visible = !isShowingAddBookScreen,
         enter = slideInHorizontally() + fadeIn(),
         exit = slideOutHorizontally() + fadeOut()
     ) {
-        TimerScreen({ isShowingAddBookScreen = true })
+        TimerScreen({ isShowingAddBookScreen = true }, { isEditProblemDialogVisible = true })
     }
+    BottomSheetDialog(
+        title = "문제 수정",
+        items = listOf(
+            BottomSheetDialogItem(Icons.Default.Add, "꼬리 문제 추가", {}),
+            BottomSheetDialogItem(Icons.Default.Edit, "전체 문제 수정", {})
+        ),
+        isEditProblemDialogVisible,
+        { isEditProblemDialogVisible = false }
+    )
     AnimatedVisibility(
         visible = isShowingAddBookScreen,
         enter = slideInHorizontally { it },

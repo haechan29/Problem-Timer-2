@@ -45,12 +45,12 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hc.problem_timer_2.MainActivity
 import com.hc.problem_timer_2.R
-import com.hc.problem_timer_2.util.BasicTextFieldWithHint
+import com.hc.problem_timer_2.ui.view.BasicTextFieldWithHint
 import com.hc.problem_timer_2.util.JamoUtil
-import com.hc.problem_timer_2.util.TextWithoutPadding
+import com.hc.problem_timer_2.ui.view.TextWithoutPadding
 import com.hc.problem_timer_2.util.notosanskr
-import com.hc.problem_timer_2.viewmodel.BookListViewModel
-import com.hc.problem_timer_2.vo.Book
+import com.hc.problem_timer_2.ui.viewmodel.BookListViewModel
+import com.hc.problem_timer_2.data.vo.Book
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

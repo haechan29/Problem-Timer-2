@@ -616,11 +616,18 @@ fun ColumnScope.ProblemBodyTab(
         items(items = problemsOnSelectedPage) { problem ->
             val problemRecords =
                 problemRecordsMapOnSelectedPage[problem.number] ?: emptyList()
-            val addNewProblemRecord = problemRecords.isEmpty() || problemRecords.first().isGraded()
+            var isBeforeRecording by remember { mutableStateOf(problemRecords.ifEmpty { null }?.first()?.isGraded() ?: true) }
             val recentProblemRecord = problemRecords.firstOrNull()
-            var currentTimeRecord by remember { mutableIntStateOf( if (addNewProblemRecord) 0 else recentProblemRecord!!.timeRecord) }
-            var currentGrade by remember { mutableStateOf( if (addNewProblemRecord) Grade.Unranked else recentProblemRecord!!.grade) }
+            var currentTimeRecord by remember { mutableIntStateOf( recentProblemRecord?.timeRecord ?: 0) }
+            var currentGrade by remember { mutableStateOf( recentProblemRecord?.grade ?: Grade.Unranked) }
             var isProblemRecordsVisible by remember { mutableStateOf(false) }
+
+            LaunchedEffect(key1 = isBeforeRecording) {
+                if (!isBeforeRecording) {
+                    currentTimeRecord = 0
+                    currentGrade = Grade.Unranked
+                }
+            }
 
             ProblemAndProblemRecordTabStateless(
                 selectedPage,
@@ -634,12 +641,14 @@ fun ColumnScope.ProblemBodyTab(
                 { currentGrade },
                 { currentGrade = currentGrade.next() },
                 {
-                    if (!isGradeMode() && addNewProblemRecord) {
+                    if (!isGradeMode() && isBeforeRecording) {
                         problemRecordViewModel.addProblemRecord(problem)
                     } else {
                         problemRecordViewModel.updateProblemRecord(recentProblemRecord!!, currentTimeRecord, currentGrade)
                     }
-                }
+                },
+                { isBeforeRecording = false },
+                { isBeforeRecording = true }
             )
         }
     }
@@ -657,7 +666,9 @@ fun ProblemAndProblemRecordTabStateless(
     setShowingProblemRecords: (Boolean) -> Unit,
     getCurrentGrade: () -> Grade,
     setNextGrade: () -> Unit,
-    addOrUpdateProblemRecord: () -> Unit
+    addOrUpdateProblemRecord: () -> Unit,
+    startRecording: () -> Unit,
+    finishGrading: () -> Unit
 ) {
     LaunchedEffect(key1 = selectedPage, key2 = isGradeMode()) {
         setShowingProblemRecords(false)
@@ -675,7 +686,9 @@ fun ProblemAndProblemRecordTabStateless(
             ProblemAndProblemRecordInGradeModeTabStateless(
                 problem,
                 getCurrentGrade,
-                setNextGrade
+                setNextGrade,
+                addOrUpdateProblemRecord,
+                finishGrading
             )
         } else {
             ProblemAndProblemRecordInNormalModeTabStateless(
@@ -686,7 +699,8 @@ fun ProblemAndProblemRecordTabStateless(
                 isProblemRecordsVisible,
                 problemRecords,
                 { setShowingProblemRecords(!isProblemRecordsVisible()) },
-                addOrUpdateProblemRecord
+                addOrUpdateProblemRecord,
+                startRecording
             )
         }
     }
@@ -696,7 +710,9 @@ fun ProblemAndProblemRecordTabStateless(
 fun ProblemAndProblemRecordInGradeModeTabStateless(
     problem: Problem,
     getCurrentGrade: () -> Grade,
-    setNextGrade: () -> Unit
+    setNextGrade: () -> Unit,
+    addOrUpdateProblemRecord: () -> Unit,
+    finishGrading: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -712,7 +728,11 @@ fun ProblemAndProblemRecordInGradeModeTabStateless(
             modifier = Modifier
                 .weight(1f)
                 .height(40.dp)
-                .clickable { setNextGrade() },
+                .clickable {
+                    setNextGrade()
+                    addOrUpdateProblemRecord()
+                    finishGrading()
+                },
             contentAlignment = Alignment.Center
         ) {
             TextWithoutPadding(
@@ -762,7 +782,8 @@ fun ProblemAndProblemRecordInNormalModeTabStateless(
     isProblemRecordsVisible: () -> Boolean,
     problemRecords: List<ProblemRecord>,
     toggleVisibilityOfProblemRecords: () -> Unit,
-    addOrUpdateProblemRecord: () -> Unit
+    addOrUpdateProblemRecord: () -> Unit,
+    startRecording: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -776,7 +797,8 @@ fun ProblemAndProblemRecordInNormalModeTabStateless(
             getCurrentTimeRecord,
             increaseCurrentTimeRecord,
             getCurrentGrade,
-            addOrUpdateProblemRecord
+            addOrUpdateProblemRecord,
+            startRecording
         )
         AnimatedVisibility(
             visible = isProblemRecordsVisible(),
@@ -814,7 +836,8 @@ fun ProblemContentTab(
     getCurrentTimeRecord: () -> Int,
     increaseCurrentTimeRecord: (Int) -> Unit,
     getCurrentGrade: () -> Grade,
-    addOrUpdateProblemRecord: () -> Unit
+    addOrUpdateProblemRecord: () -> Unit,
+    startRecording: () -> Unit
 ) {
     var isTimerRunning by remember { mutableStateOf(false) }
 
@@ -840,7 +863,8 @@ fun ProblemContentTab(
         ProblemTimberButton(
             isTimerRunning,
             { isTimerRunning = !isTimerRunning },
-            addOrUpdateProblemRecord
+            addOrUpdateProblemRecord,
+            startRecording
         )
     }
 }
@@ -889,7 +913,8 @@ fun ProblemTimerTab(getCurrentTimeRecord: () -> Int) {
 fun ProblemTimberButton(
     isTimerRunning: Boolean,
     toggleTimerRunning: () -> Unit,
-    addOrUpdateProblemRecord: () -> Unit
+    addOrUpdateProblemRecord: () -> Unit,
+    startRecording: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -900,6 +925,7 @@ fun ProblemTimberButton(
             .clickable {
                 addOrUpdateProblemRecord()
                 toggleTimerRunning()
+                startRecording()
             }
             .padding(horizontal = 15.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically

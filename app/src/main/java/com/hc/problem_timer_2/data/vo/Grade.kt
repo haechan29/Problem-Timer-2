@@ -10,6 +10,6 @@ enum class Grade(val color: Color, val textShort: String, val textLong: String) 
 
     fun next(): Grade {
         val index = entries.indexOf(this)
-        return entries[(index + 1) % entries.size]
+        return entries[((index + 1) % entries.size ) % (entries.size - 1)]
     }
 }

@@ -616,17 +616,20 @@ fun ColumnScope.ProblemBodyTab(
         items(items = problemsOnSelectedPage) { problem ->
             val problemRecords =
                 problemRecordsMapOnSelectedPage[problem.number] ?: emptyList()
-            var isBeforeRecording by remember { mutableStateOf(problemRecords.ifEmpty { null }?.first()?.isGraded() ?: true) }
             val recentProblemRecord = problemRecords.firstOrNull()
             var currentTimeRecord by remember { mutableIntStateOf( recentProblemRecord?.timeRecord ?: 0) }
             var currentGrade by remember { mutableStateOf( recentProblemRecord?.grade ?: Grade.Unranked) }
+            var isBeforeRecording by remember { mutableStateOf(problemRecords.ifEmpty { null }?.first()?.isGraded() ?: true) }
             var isProblemRecordsVisible by remember { mutableStateOf(false) }
 
-            LaunchedEffect(key1 = isBeforeRecording) {
-                if (!isBeforeRecording) {
-                    currentTimeRecord = 0
-                    currentGrade = Grade.Unranked
-                }
+            LaunchedEffect(key1 = recentProblemRecord) {
+                currentTimeRecord = recentProblemRecord?.timeRecord ?: 0
+                currentGrade = recentProblemRecord?.grade ?: Grade.Unranked
+            }
+
+            LaunchedEffect(key1 = selectedPage) {
+                isBeforeRecording = problemRecords.ifEmpty { null }?.first()?.isGraded() ?: true
+                isProblemRecordsVisible = false
             }
 
             ProblemAndProblemRecordTabStateless(
@@ -860,7 +863,7 @@ fun ProblemContentTab(
         Spacer(Modifier.width(24.dp))
         ProblemTimerTab(getCurrentTimeRecord)
         Spacer(Modifier.weight(1f))
-        ProblemTimberButton(
+        ProblemTimerButton(
             isTimerRunning,
             { isTimerRunning = !isTimerRunning },
             addOrUpdateProblemRecord,
@@ -910,7 +913,7 @@ fun ProblemTimerTab(getCurrentTimeRecord: () -> Int) {
 }
 
 @Composable
-fun ProblemTimberButton(
+fun ProblemTimerButton(
     isTimerRunning: Boolean,
     toggleTimerRunning: () -> Unit,
     addOrUpdateProblemRecord: () -> Unit,

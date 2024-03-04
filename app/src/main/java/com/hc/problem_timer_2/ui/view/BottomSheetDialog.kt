@@ -82,6 +82,10 @@ fun BottomSheetDialog(
                     .fillMaxWidth()
                     .wrapContentHeight()
                     .background(color = Color.White, shape = RoundedCornerShape(20.dp))
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null
+                    ) {}
                     .padding(vertical = 12.dp, horizontal = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {

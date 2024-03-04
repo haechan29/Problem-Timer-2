@@ -15,6 +15,7 @@
     <color name="black_800">#CC000000</color> <!-- 80% -->
     <color name="black_900">#FF000000</color> <!-- 100% -->
 
+    <color name="blue_500">#800035F0</color>
     <color name="blue_700">#B30035F0</color>
     <color name="blue_800">#CC0035F0</color>
 

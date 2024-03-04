@@ -70,7 +70,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hc.problem_timer_2.R
-import com.hc.problem_timer_2.UpdateProblemDialog
 import com.hc.problem_timer_2.ui.view.TextWithoutPadding
 import com.hc.problem_timer_2.util.added
 import com.hc.problem_timer_2.util.applesdgothicneo
@@ -617,21 +616,11 @@ fun ColumnScope.ProblemBodyTab(
         items(items = problemsOnSelectedPage) { problem ->
             val problemRecords =
                 problemRecordsMapOnSelectedPage[problem.number] ?: emptyList()
+            val addNewProblemRecord = problemRecords.isEmpty() || problemRecords.first().isGraded()
+            val recentProblemRecord = problemRecords.firstOrNull()
+            var currentTimeRecord by remember { mutableIntStateOf( if (addNewProblemRecord) 0 else recentProblemRecord!!.timeRecord) }
+            var currentGrade by remember { mutableStateOf( if (addNewProblemRecord) Grade.Unranked else recentProblemRecord!!.grade) }
             var isProblemRecordsVisible by remember { mutableStateOf(false) }
-            var currentTimeRecord by remember { mutableIntStateOf(0) }
-            var currentGrade by remember { mutableStateOf(Grade.Unranked) }
-            val addProblemRecord = {
-                problemRecordViewModel.addProblemRecord(
-                    ProblemRecord(
-                        bookId = problem.bookId,
-                        page = problem.page,
-                        number = problem.number,
-                        timeRecord = currentTimeRecord,
-                        grade = currentGrade,
-                        solvedAt = getNow()
-                    )
-                )
-            }
 
             ProblemAndProblemRecordTabStateless(
                 selectedPage,
@@ -644,7 +633,13 @@ fun ColumnScope.ProblemBodyTab(
                 { value: Boolean -> isProblemRecordsVisible = value },
                 { currentGrade },
                 { currentGrade = currentGrade.next() },
-                addProblemRecord
+                {
+                    if (!isGradeMode() && addNewProblemRecord) {
+                        problemRecordViewModel.addProblemRecord(problem)
+                    } else {
+                        problemRecordViewModel.updateProblemRecord(recentProblemRecord!!, currentTimeRecord, currentGrade)
+                    }
+                }
             )
         }
     }
@@ -662,17 +657,10 @@ fun ProblemAndProblemRecordTabStateless(
     setShowingProblemRecords: (Boolean) -> Unit,
     getCurrentGrade: () -> Grade,
     setNextGrade: () -> Unit,
-    addProblemRecord: () -> Unit
+    addOrUpdateProblemRecord: () -> Unit
 ) {
-    LaunchedEffect(key1 = selectedPage) {
+    LaunchedEffect(key1 = selectedPage, key2 = isGradeMode()) {
         setShowingProblemRecords(false)
-    }
-
-    LaunchedEffect(key1 = isGradeMode()) {
-        setShowingProblemRecords(false)
-        if (!isGradeMode() && !shouldWaitToRecordAgain(problemRecords.firstOrNull()) && getCurrentGrade() != Grade.Unranked) {
-            addProblemRecord()
-        }
     }
 
     Card(
@@ -697,7 +685,8 @@ fun ProblemAndProblemRecordTabStateless(
                 getCurrentGrade,
                 isProblemRecordsVisible,
                 problemRecords,
-                { setShowingProblemRecords(!isProblemRecordsVisible()) }
+                { setShowingProblemRecords(!isProblemRecordsVisible()) },
+                addOrUpdateProblemRecord
             )
         }
     }
@@ -729,7 +718,7 @@ fun ProblemAndProblemRecordInGradeModeTabStateless(
             TextWithoutPadding(
                 modifier = Modifier.wrapContentWidth(),
                 textAlign = TextAlign.Center,
-                text = getCurrentGrade().text,
+                text = getCurrentGrade().textLong,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Normal,
                 fontFamily = notosanskr,
@@ -772,7 +761,8 @@ fun ProblemAndProblemRecordInNormalModeTabStateless(
     getCurrentGrade: () -> Grade,
     isProblemRecordsVisible: () -> Boolean,
     problemRecords: List<ProblemRecord>,
-    toggleVisibilityOfProblemRecords: () -> Unit
+    toggleVisibilityOfProblemRecords: () -> Unit,
+    addOrUpdateProblemRecord: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -781,7 +771,13 @@ fun ProblemAndProblemRecordInNormalModeTabStateless(
             .fillMaxWidth()
             .wrapContentHeight()
     ) {
-        ProblemContentTab(problem, getCurrentTimeRecord, increaseCurrentTimeRecord, getCurrentGrade)
+        ProblemContentTab(
+            problem,
+            getCurrentTimeRecord,
+            increaseCurrentTimeRecord,
+            getCurrentGrade,
+            addOrUpdateProblemRecord
+        )
         AnimatedVisibility(
             visible = isProblemRecordsVisible(),
             enter = expandVertically(expandFrom = Alignment.Top),
@@ -793,7 +789,7 @@ fun ProblemAndProblemRecordInNormalModeTabStateless(
                     .wrapContentHeight()
             ) {
                 Spacer(modifier = Modifier.height(20.dp))
-                ProblemRecordListTab(problemRecords)
+                ProblemRecordTab(problemRecords)
             }
         }
         Spacer(modifier = Modifier.height(15.dp))
@@ -817,14 +813,15 @@ fun ProblemContentTab(
     problem: Problem,
     getCurrentTimeRecord: () -> Int,
     increaseCurrentTimeRecord: (Int) -> Unit,
-    getCurrentGrade: () -> Grade
+    getCurrentGrade: () -> Grade,
+    addOrUpdateProblemRecord: () -> Unit
 ) {
     var isTimerRunning by remember { mutableStateOf(false) }
 
     LaunchedEffect(key1 = isTimerRunning) {
         while (isTimerRunning) {
-            delay(100)
-            increaseCurrentTimeRecord(100)
+            delay(10)
+            increaseCurrentTimeRecord(10)
         }
     }
 
@@ -840,7 +837,11 @@ fun ProblemContentTab(
         Spacer(Modifier.width(24.dp))
         ProblemTimerTab(getCurrentTimeRecord)
         Spacer(Modifier.weight(1f))
-        ProblemTimberButton(isTimerRunning) { isTimerRunning = !isTimerRunning }
+        ProblemTimberButton(
+            isTimerRunning,
+            { isTimerRunning = !isTimerRunning },
+            addOrUpdateProblemRecord
+        )
     }
 }
 
@@ -885,14 +886,21 @@ fun ProblemTimerTab(getCurrentTimeRecord: () -> Int) {
 }
 
 @Composable
-fun ProblemTimberButton(isTimerRunning: Boolean, toggleTimerRunning: () -> Unit) {
+fun ProblemTimberButton(
+    isTimerRunning: Boolean,
+    toggleTimerRunning: () -> Unit,
+    addOrUpdateProblemRecord: () -> Unit
+) {
     Row(
         modifier = Modifier
             .background(
                 color = colorResource(id = if (isTimerRunning) R.color.blue_700 else R.color.black_200),
                 shape = RoundedCornerShape(10.dp)
             )
-            .clickable { toggleTimerRunning() }
+            .clickable {
+                addOrUpdateProblemRecord()
+                toggleTimerRunning()
+            }
             .padding(horizontal = 15.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -917,7 +925,7 @@ fun ProblemTimberButton(isTimerRunning: Boolean, toggleTimerRunning: () -> Unit)
 }
 
 @Composable
-fun ProblemRecordListTab(problemRecords: List<ProblemRecord>) {
+fun ProblemRecordTab(problemRecords: List<ProblemRecord>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -926,17 +934,15 @@ fun ProblemRecordListTab(problemRecords: List<ProblemRecord>) {
                 color = colorResource(id = R.color.black_100),
                 shape = RoundedCornerShape(10.dp)
             )
-            .padding(horizontal = 30.dp, vertical = 15.dp)
+            .padding(horizontal = 30.dp, vertical = 15.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         if (problemRecords.isEmpty()) {
             Text(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 10.dp),
+                modifier = Modifier.fillMaxWidth(),
                 text = stringResource(R.string.no_problem_record),
                 textAlign = TextAlign.Center,
-                fontSize = 12.sp,
-                lineHeight = 14.sp
+                fontSize = 14.sp
             )
         } else {
             problemRecords.map { problemRecord ->
@@ -972,7 +978,7 @@ fun ProblemRecordListTab(problemRecords: List<ProblemRecord>) {
                             .width(60.dp)
                             .wrapContentHeight(),
                         textAlign = TextAlign.Center,
-                        text = problemRecord.grade.text,
+                        text = problemRecord.grade.textShort,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         fontFamily = notosanskr,

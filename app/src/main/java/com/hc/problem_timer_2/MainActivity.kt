@@ -68,9 +68,8 @@ import com.hc.problem_timer_2.MainActivity.Companion.POSITIVE_INTEGER_MATCHER
 import com.hc.problem_timer_2.ui.screen.AddBookScreen
 import com.hc.problem_timer_2.ui.screen.TimerScreen
 import com.hc.problem_timer_2.data.vo.Problem
+import com.hc.problem_timer_2.ui.screen.EditProblemDialog
 import com.hc.problem_timer_2.ui.view.BaseDialog
-import com.hc.problem_timer_2.ui.view.BottomSheetDialog
-import com.hc.problem_timer_2.ui.view.BottomSheetDialogItem
 import com.hc.problem_timer_2.ui.view.customToast
 import com.hc.problem_timer_2.ui.viewmodel.ProblemViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -114,27 +113,8 @@ fun TimerApp(
     ) {
         TimerScreen({ isAddBookScreenVisible = true })
     }
-    BottomSheetDialog(
-        title = "문제 수정",
-        items = listOf(
-            BottomSheetDialogItem(
-                ImageVector.vectorResource(id = R.drawable.remove_black_24dp),
-                "문제 삭제",
-                { problemViewModel.deleteProblemToEdit() }
-            ),
-            BottomSheetDialogItem(
-                Icons.Default.Add,
-                "꼬리 문제 추가",
-                { problemViewModel.addSequentialProblemOfProblemToEdit() }
-            ),
-            BottomSheetDialogItem(
-                Icons.Default.Edit,
-                "전체 문제 수정",
-                {}
-            )
-        ),
-        isEditingProblem ?: false,
-        { problemViewModel.unsetProblemToEdit() }
+    EditProblemDialog(
+
     )
     AnimatedVisibility(
         visible = isAddBookScreenVisible,

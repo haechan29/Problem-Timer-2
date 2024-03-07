@@ -53,6 +53,19 @@ class ProblemViewModel @Inject constructor(private val problemRepository: Proble
         deleteProblem(problem)
     }
 
+    fun changeProblemsOnSelectedPage(firstProblemNumberInput: String, lastProblemNumberInput: String) = withProblemToEditNotNull { problem ->
+        try {
+            deleteProblemsOnPage(problem.bookId, problem.page)
+            (firstProblemNumberInput.toInt() .. lastProblemNumberInput.toInt()).forEach { problemNumber ->
+                addProblem(Problem(
+                    bookId = problem.bookId,
+                    page = problem.page,
+                    mainNumber = "$problemNumber"
+                ))
+            }
+        } catch (_: Exception) {}
+    }
+
     fun addProblem(problem: Problem) = doIOAndGetProblemsOfSelectedBook {
         if (problem.id != 0L) throw IllegalArgumentException("insert problem with id already set")
         problemRepository.insert(problem)
@@ -91,6 +104,13 @@ class ProblemViewModel @Inject constructor(private val problemRepository: Proble
     fun deleteProblemsOnBook(bookId: Long) = doIOAndGetProblemsOfSelectedBook {
         val problemsOnBook = problems.value!!.onBook(bookId)
         problemRepository.deleteAll(problemsOnBook)
+    }
+
+    private fun deleteProblemsOnPage(bookId: Long, page: Int) = doIOAndGetProblemsOfSelectedBook {
+        val problemsOnPage = problems.value!!
+            .onBook(bookId)
+            .onPage(page)
+        problemRepository.deleteAll(problemsOnPage)
     }
 
     private fun <R> withProblemsOfSelectedBookNotNull(f: (List<Problem>) -> R): R {

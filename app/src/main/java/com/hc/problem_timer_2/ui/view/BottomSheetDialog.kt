@@ -47,7 +47,7 @@ import com.hc.problem_timer_2.util.notosanskr
 @Composable
 fun BottomSheetDialog(
     title: String,
-    items: List<BottomSheetDialogItem>,
+    content: @Composable () -> Unit,
     isVisible: Boolean,
     dismiss: () -> Unit,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() }
@@ -106,48 +106,8 @@ fun BottomSheetDialog(
                     fontWeight = FontWeight.Bold,
                     fontFamily = notosanskr
                 )
-                items.forEach { item ->
-                    Row(
-                        modifier = Modifier
-                            .padding(vertical = 16.dp)
-                            .clickable { item.onItemClick() },
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            modifier = Modifier.size(20.dp),
-                            imageVector = item.itemIcon,
-                            contentDescription = null,
-                            tint = colorResource(id = R.color.black_400)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        TextWithoutPadding(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .wrapContentHeight(),
-                            text = item.itemName,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Normal,
-                            fontFamily = notosanskr
-                        )
-                    }
-                }
+                content()
             }
         }
     }
 }
-
-@Preview(showBackground = true)
-@Composable
-fun BottomSheetPreview() {
-    BottomSheetDialog(
-        title = "문제 수정",
-        items = listOf(
-            BottomSheetDialogItem(Icons.Default.Add, "꼬리 문제 추가", {}),
-            BottomSheetDialogItem(Icons.Default.Edit, "전체 문제 수정", {})
-        ),
-        true,
-        {}
-    )
-}
-
-data class BottomSheetDialogItem(val itemIcon: ImageVector, val itemName: String, val onItemClick: () -> Unit)

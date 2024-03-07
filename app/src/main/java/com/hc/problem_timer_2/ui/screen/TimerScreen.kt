@@ -88,6 +88,7 @@ import com.hc.problem_timer_2.data.vo.onPage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @Composable
 fun TimerScreen(
@@ -650,6 +651,7 @@ fun ColumnScope.ProblemBodyTab(
                         problemRecordViewModel.updateProblemRecord(recentProblemRecord!!, currentTimeRecord, currentGrade)
                     }
                 },
+                { isBeforeRecording },
                 { isBeforeRecording = false },
                 { isBeforeRecording = true }
             )
@@ -670,6 +672,7 @@ fun ProblemAndProblemRecordTabStateless(
     getCurrentGrade: () -> Grade,
     setNextGrade: () -> Unit,
     addOrUpdateProblemRecord: () -> Unit,
+    isBeforeRecording: () -> Boolean,
     startRecording: () -> Unit,
     finishGrading: () -> Unit
 ) {
@@ -689,12 +692,14 @@ fun ProblemAndProblemRecordTabStateless(
             ProblemAndProblemRecordInGradeModeTabStateless(
                 problem,
                 getCurrentGrade,
+                isBeforeRecording,
                 setNextGrade,
                 addOrUpdateProblemRecord,
                 finishGrading
             )
         } else {
             ProblemAndProblemRecordInNormalModeTabStateless(
+                selectedPage,
                 problem,
                 getCurrentTimeRecord,
                 increaseCurrentTimeRecord,
@@ -713,6 +718,7 @@ fun ProblemAndProblemRecordTabStateless(
 fun ProblemAndProblemRecordInGradeModeTabStateless(
     problem: Problem,
     getCurrentGrade: () -> Grade,
+    isBeforeRecording: () -> Boolean,
     setNextGrade: () -> Unit,
     addOrUpdateProblemRecord: () -> Unit,
     finishGrading: () -> Unit
@@ -732,9 +738,13 @@ fun ProblemAndProblemRecordInGradeModeTabStateless(
                 .weight(1f)
                 .height(40.dp)
                 .clickable {
-                    setNextGrade()
-                    addOrUpdateProblemRecord()
-                    finishGrading()
+                    if (isBeforeRecording()) {
+                        // Todo: give some notification
+                    } else {
+                        setNextGrade()
+                        addOrUpdateProblemRecord()
+                        finishGrading()
+                    }
                 },
             contentAlignment = Alignment.Center
         ) {
@@ -778,6 +788,7 @@ fun ProblemNumberInGradeModeTab(
 
 @Composable
 fun ProblemAndProblemRecordInNormalModeTabStateless(
+    selectedPage: Int?,
     problem: Problem,
     getCurrentTimeRecord: () -> Int,
     increaseCurrentTimeRecord: (Int) -> Unit,
@@ -796,6 +807,7 @@ fun ProblemAndProblemRecordInNormalModeTabStateless(
             .wrapContentHeight()
     ) {
         ProblemContentTab(
+            selectedPage,
             problem,
             getCurrentTimeRecord,
             increaseCurrentTimeRecord,
@@ -835,6 +847,7 @@ fun ProblemAndProblemRecordInNormalModeTabStateless(
 
 @Composable
 fun ProblemContentTab(
+    selectedPage: Int?,
     problem: Problem,
     getCurrentTimeRecord: () -> Int,
     increaseCurrentTimeRecord: (Int) -> Unit,
@@ -843,6 +856,10 @@ fun ProblemContentTab(
     startRecording: () -> Unit
 ) {
     var isTimerRunning by remember { mutableStateOf(false) }
+
+    LaunchedEffect(key1 = selectedPage) {
+        isTimerRunning = false
+    }
 
     LaunchedEffect(key1 = isTimerRunning) {
         while (isTimerRunning) {

@@ -68,6 +68,7 @@ import com.hc.problem_timer_2.MainActivity.Companion.POSITIVE_INTEGER_MATCHER
 import com.hc.problem_timer_2.ui.screen.AddBookScreen
 import com.hc.problem_timer_2.ui.screen.TimerScreen
 import com.hc.problem_timer_2.data.vo.Problem
+import com.hc.problem_timer_2.ui.screen.ChangeProblemsOnSelectedPageDialog
 import com.hc.problem_timer_2.ui.screen.EditProblemDialog
 import com.hc.problem_timer_2.ui.view.BaseDialog
 import com.hc.problem_timer_2.ui.view.customToast
@@ -104,7 +105,6 @@ fun TimerApp(
     problemViewModel: ProblemViewModel = viewModel()
 ) {
     var isAddBookScreenVisible by remember { mutableStateOf(false) }
-    val isEditingProblem by problemViewModel.isEditingProblem.observeAsState()
 
     AnimatedVisibility(
         visible = !isAddBookScreenVisible,
@@ -113,9 +113,8 @@ fun TimerApp(
     ) {
         TimerScreen({ isAddBookScreenVisible = true })
     }
-    EditProblemDialog(
-
-    )
+    EditProblemDialog()
+    ChangeProblemsOnSelectedPageDialog()
     AnimatedVisibility(
         visible = isAddBookScreenVisible,
         enter = slideInHorizontally { it },

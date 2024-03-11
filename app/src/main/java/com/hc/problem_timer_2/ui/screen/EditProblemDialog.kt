@@ -28,13 +28,18 @@ import com.hc.problem_timer_2.R
 import com.hc.problem_timer_2.ui.view.BottomSheetDialog
 import com.hc.problem_timer_2.ui.view.TextWithoutPadding
 import com.hc.problem_timer_2.ui.viewmodel.ProblemViewModel
+import com.hc.problem_timer_2.ui.viewmodel.SelectedBookInfoViewModel
 import com.hc.problem_timer_2.util.notosanskr
+import timber.log.Timber
 
 @Composable
 fun EditProblemDialog(
+    selectedBookInfoViewModel: SelectedBookInfoViewModel = viewModel(),
     problemViewModel: ProblemViewModel = viewModel()
 ) {
+    val selectedBookInfo by selectedBookInfoViewModel.selectedBookInfo.observeAsState()
     val isEditingProblem by problemViewModel.isEditingProblem.observeAsState()
+
     val items = listOf(
         EditProblemDialogItem(
             ImageVector.vectorResource(id = R.drawable.remove_black_24dp),
@@ -49,7 +54,10 @@ fun EditProblemDialog(
         EditProblemDialogItem(
             Icons.Default.Edit,
             "전체 문제 수정",
-            {  }
+            {
+                problemViewModel.unsetProblemToEdit()
+                problemViewModel.setBookInfoToChangeProblems(selectedBookInfo!!)
+            }
         )
     )
 
@@ -82,8 +90,8 @@ fun EditProblemDialog(
                 }
             }
         },
-        isEditingProblem ?: false,
-        { problemViewModel.unsetProblemToEdit() }
+        isVisible = isEditingProblem ?: false,
+        dismiss = { problemViewModel.unsetProblemToEdit() }
     )
 }
 

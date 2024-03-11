@@ -9,12 +9,12 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SelectedBookInfoViewModel @Inject constructor(): ViewModel() {
-    private val _selectedSelectedBookInfo = MutableLiveData(SelectedBookInfo())
-    val selectedBookInfo: LiveData<SelectedBookInfo> get() = _selectedSelectedBookInfo
+    private val _selectedBookInfo = MutableLiveData(SelectedBookInfo())
+    val selectedBookInfo: LiveData<SelectedBookInfo> get() = _selectedBookInfo
 
-    fun select(book: Book) { _selectedSelectedBookInfo.value = SelectedBookInfo(selectedBook = book, selectedPage = null) }
-    fun select(page: Int) { _selectedSelectedBookInfo.value = withSelectedBookInfoNotNull { it.copy(selectedPage = page) } }
-    fun unselect() { _selectedSelectedBookInfo.value = SelectedBookInfo() }
+    fun select(book: Book) { _selectedBookInfo.value = SelectedBookInfo(selectedBook = book, selectedPage = null) }
+    fun select(page: Int) { _selectedBookInfo.value = withSelectedBookInfoNotNull { it.copy(selectedPage = page) } }
+    fun unselect() { _selectedBookInfo.value = SelectedBookInfo() }
 
     private fun <R> withSelectedBookInfoNotNull(f: (SelectedBookInfo) -> R): R {
         if (selectedBookInfo.value == null) throw UninitializedPropertyAccessException("bookInfo not initialized")

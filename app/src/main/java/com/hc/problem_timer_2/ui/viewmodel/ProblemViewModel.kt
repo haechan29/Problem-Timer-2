@@ -41,7 +41,8 @@ class ProblemViewModel @Inject constructor(private val problemRepository: Proble
 
     fun getProblems() {
         viewModelScope.launch {
-            _problems.value = withContext(Dispatchers.IO) { problemRepository.getAll() }!!
+            val problems = withContext(Dispatchers.IO) { problemRepository.getAll() }!!
+            _problems.value = problems.sortedBy { it.number }
         }
     }
 

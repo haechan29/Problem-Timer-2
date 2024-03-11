@@ -22,7 +22,7 @@ class BookViewModel @Inject constructor(private val bookRepository: BookReposito
             val books = withContext(Dispatchers.IO) {
                 bookRepository.getAll()
             }
-            _bookList.value = books
+            _bookList.value = books.sortedByDescending { it.addedAt }
         }
     }
 

@@ -29,7 +29,7 @@ class ProblemRecordConverter {
     fun toJson(instant: Instant) = instant.toString()
 
     @TypeConverter
-    fun toProblemRecord(json: String) = Instant.parse(json)
+    fun totoInstant(json: String) = Instant.parse(json)
 }
 
 fun ProblemRecordDto.toVO() = ProblemRecord(

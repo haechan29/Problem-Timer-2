@@ -17,12 +17,12 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ProblemRecordViewModel @Inject constructor(private val problemRecordRepository: ProblemRecordRepository): ViewModel() {
-    private val _problemRecordListOnSelectedPage = MutableLiveData(listOf<ProblemRecord>())
-    val problemRecordListOnSelectedPage: LiveData<List<ProblemRecord>> get() = _problemRecordListOnSelectedPage
+    private val _problemRecordsOnSelectedPage = MutableLiveData(listOf<ProblemRecord>())
+    val problemRecordListOnSelectedPage: LiveData<List<ProblemRecord>> get() = _problemRecordsOnSelectedPage
 
     fun getProblemRecords() {
         viewModelScope.launch {
-            _problemRecordListOnSelectedPage.value = withContext(Dispatchers.IO) { problemRecordRepository.getAll() }
+            _problemRecordsOnSelectedPage.value = withContext(Dispatchers.IO) { problemRecordRepository.getAll() }
         }
     }
 

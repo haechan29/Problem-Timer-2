@@ -54,7 +54,7 @@ threadPool.execute(new Runnable() {             // Callback 1
 ```
 ➡️ Coroutine을 통한 ``동시성 프로그래밍``으로 __콜백 지옥 삭제__ <br/><br/>
 
-## 개발 기간 감소
+## 유지보수성 증가
 
 __[기존 방식]__ <br/>
 뷰와 레이아웃이 분리되어 있어(xml) 작업이 복잡하고, 가독성이 떨어짐<br/><br/>

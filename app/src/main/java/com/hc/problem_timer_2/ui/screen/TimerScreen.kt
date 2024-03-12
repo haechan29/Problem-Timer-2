@@ -319,6 +319,7 @@ fun PageTab(
         .filter { it.bookId == bookInfo!!.selectedBook!!.id }
         .map { it.page }
         .distinct()
+        .sorted()
     if (pages.isEmpty()) {
         problemViewModel.addDefaultProblems(bookInfo!!.selectedBook!!.id)
     } else {

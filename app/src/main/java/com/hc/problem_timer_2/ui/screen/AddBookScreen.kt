@@ -111,7 +111,7 @@ fun SearchBarTab(
                     .wrapContentHeight()
                     .padding(vertical = 1.dp),
                 value = getBookNameInput(),
-                onValueChange = { if (it.length <= MainActivity.BOOK_NAME_LENGTH_MAX) setBookNameInput(it) },
+                onValueChange = { if (it.length <= MainActivity.BOOK_NAME_LENGTH_LIMIT) setBookNameInput(it) },
                 textStyle = TextStyle(
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,

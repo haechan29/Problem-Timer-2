@@ -908,7 +908,12 @@ fun ProblemNumberInNormalModeTab(
             modifier = Modifier.wrapContentSize(),
             textAlign = TextAlign.Center,
             text = problem.number,
-            fontSize = 18.sp,
+            fontSize =
+                when (problem.number.length) {
+                    in 0 .. 3 -> 18.sp
+                    in 4 .. 5 -> 14.sp
+                    else -> 12.sp
+                },
             fontWeight = FontWeight.Bold,
             fontFamily = notosanskr,
             color = Color.White,

@@ -11,7 +11,8 @@ data class ProblemRecord(
     val grade: Grade,
     val solvedAt: LocalDateTime
 ) {
-    fun isGraded() = grade != Grade.Unranked
+    val isGraded: Boolean get() = grade != Grade.Unranked
+    val isNotGraded: Boolean get() = isGraded.not()
 }
 
 fun List<ProblemRecord>.onBook(book: Book?) = filter { it.bookId == book?.id }

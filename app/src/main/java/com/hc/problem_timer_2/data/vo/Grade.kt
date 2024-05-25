@@ -1,6 +1,7 @@
 package com.hc.problem_timer_2.data.vo
 
 import androidx.compose.ui.graphics.Color
+import timber.log.Timber
 
 enum class Grade(val color: Color, val textShort: String, val textLong: String) {
     Correct     (Color(0xB30035F0), "맞았어요", "맞았어요"),
@@ -10,6 +11,8 @@ enum class Grade(val color: Color, val textShort: String, val textLong: String) 
 
     fun next(): Grade {
         val index = entries.indexOf(this)
+
+        // Unranked -> Correct -> Wrong -> Correct -> Wrong -> ...
         return entries[((index + 1) % entries.size ) % (entries.size - 1)]
     }
 }

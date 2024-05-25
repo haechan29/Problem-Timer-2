@@ -621,7 +621,9 @@ fun ColumnScope.ProblemBodyTab(
             val recentProblemRecord = problemRecords.firstOrNull()
             var currentTimeRecord by remember { mutableIntStateOf( recentProblemRecord?.timeRecord ?: 0) }
             var currentGrade by remember { mutableStateOf( recentProblemRecord?.grade ?: Grade.Unranked) }
-            var isBeforeRecording by remember { mutableStateOf(problemRecords.ifEmpty { null }?.first()?.isGraded() ?: true) }
+            var isBeforeRecording by remember {
+                mutableStateOf(problemRecords.isEmpty() || problemRecords.first().isNotGraded)
+            }
             var isProblemRecordsVisible by remember { mutableStateOf(false) }
 
             LaunchedEffect(key1 = recentProblemRecord) {
@@ -630,7 +632,7 @@ fun ColumnScope.ProblemBodyTab(
             }
 
             LaunchedEffect(key1 = selectedPage) {
-                isBeforeRecording = problemRecords.ifEmpty { null }?.first()?.isGraded() ?: true
+                isBeforeRecording = problemRecords.isEmpty() || problemRecords.first().isGraded
                 isProblemRecordsVisible = false
             }
 
@@ -719,11 +721,13 @@ fun ProblemAndProblemRecordTabStateless(
 fun ProblemAndProblemRecordInGradeModeTabStateless(
     problem: Problem,
     getCurrentGrade: () -> Grade,
-    isBeforeRecording: () -> Boolean,
+    _isBeforeRecording: () -> Boolean,
     setNextGrade: () -> Unit,
     addOrUpdateProblemRecord: () -> Unit,
     finishGrading: () -> Unit
 ) {
+    val isBeforeRecording by remember { mutableStateOf(_isBeforeRecording()) }
+
     Row(
         modifier = Modifier
             .background(color = Color.White)
@@ -739,13 +743,14 @@ fun ProblemAndProblemRecordInGradeModeTabStateless(
                 .weight(1f)
                 .height(40.dp)
                 .clickable {
-                    if (isBeforeRecording()) {
+                    if (isBeforeRecording) {
                         // Todo: give some notification
-                    } else {
-                        setNextGrade()
-                        addOrUpdateProblemRecord()
-                        finishGrading()
+                        return@clickable
                     }
+
+                    setNextGrade()
+                    addOrUpdateProblemRecord()
+                    finishGrading()
                 },
             contentAlignment = Alignment.Center
         ) {

@@ -150,7 +150,6 @@ class ProblemViewModel @Inject constructor(private val problemRepository: Proble
     }
 
     private fun withBookInfoToChangeProblemsNotNull(f: (SelectedBookInfo) -> Unit) {
-        Timber.d("_bookInfoToChangeProblems: ${_bookInfoToChangeProblems.value}")
         if (_bookInfoToChangeProblems.value == null) throw UninitializedPropertyAccessException("bookInfoToChangeProblems not initialized")
         f(_bookInfoToChangeProblems.value!!)
         unsetBookInfoToChangeProblems()

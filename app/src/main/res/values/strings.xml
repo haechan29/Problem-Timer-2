@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ProblemTimer2</string>
+    <string name="app_name">수학문제 타이머</string>
     <string name="view_problems">문제\n보기</string>
     <string name="finish_grade">채점\n완료</string>
     <string name="grade">채점\n하기</string>
